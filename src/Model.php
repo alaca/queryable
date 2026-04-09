@@ -71,7 +71,15 @@ abstract class Model
         $builder = new QueryBuilder($schema);
         $builder->table($prefix . $instance->table);
 
-        return static::baseQuery(new ModelQueryBuilder($builder, static::class));
+        return static::baseQuery(new ModelQueryBuilder($builder, fn (array $row) => static::fromRow($row)));
+    }
+
+    /**
+     * @return ModelQueryBuilder<static>
+     */
+    public static function query(): ModelQueryBuilder
+    {
+        return static::newBuilder();
     }
 
     public static function make(): static
@@ -79,8 +87,7 @@ abstract class Model
         return new static();
     }
 
-    /** @internal Used by ModelQueryBuilder */
-    public static function fromRow(array $row): static
+    protected static function fromRow(array $row): static
     {
         $instance = new static();
         $ref = new ReflectionClass(static::class);

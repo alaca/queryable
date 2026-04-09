@@ -5,6 +5,8 @@ namespace Queryable;
 use Closure;
 
 /**
+ * @template TModel of Model
+ *
  * @method $this select(string ...$columns)
  * @method $this selectRaw(string $sql, mixed ...$args)
  * @method $this distinct()
@@ -64,30 +66,51 @@ use Closure;
 class ModelQueryBuilder
 {
     private QueryBuilder $builder;
-    private string $modelClass;
+    private Closure $hydrator;
 
-    public function __construct(QueryBuilder $builder, string $modelClass)
+    public function __construct(QueryBuilder $builder, Closure $hydrator)
     {
         $this->builder = $builder;
-        $this->modelClass = $modelClass;
+        $this->hydrator = $hydrator;
+    }
+
+    /**
+     * @return TModel|null
+     */
+    public function get(): mixed
+    {
+        $result = $this->builder->get();
+
+        return $result ? ($this->hydrator)($result) : null;
+    }
+
+    /**
+     * @return TModel[]
+     */
+    public function getAll(): array
+    {
+        return array_map($this->hydrator, $this->builder->getAll());
+    }
+
+    /**
+     * @return TModel|null
+     */
+    public function find(string $column, mixed $value): mixed
+    {
+        $result = $this->builder->find($column, $value);
+
+        return $result ? ($this->hydrator)($result) : null;
     }
 
     public function __call(string $method, array $args): mixed
     {
         $result = $this->builder->$method(...$args);
 
-        // keep the chain
         if ($result === $this->builder) {
             return $this;
         }
 
-        $class = $this->modelClass;
-
-        return match ($method) {
-            'get', 'find' => $result ? $class::fromRow($result) : null,
-            'getAll' => array_map(fn ($row) => $class::fromRow($row), $result),
-            default => $result,
-        };
+        return $result;
     }
 }
 

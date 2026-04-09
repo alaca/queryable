@@ -116,16 +116,16 @@ Campaign::schema(function (Table $table) {
 });
 
 // Query results are Campaign instances
-$campaign = Campaign::find('slug', 'summer');
+$campaign = Campaign::query()->find('slug', 'summer');
 $campaign instanceof Campaign; // true
 $campaign->name;
 $campaign->price; // float, auto-cast from DB  - should be unsigned int in real app! 
 
-// Static facade, every QueryBuilder method is available
-Campaign::select('id', 'name')->withMeta('budget')->where('status', 'active')->getAll();
-Campaign::insert(['name' => 'Summer Sale', 'slug' => 'summer-sale']);
-Campaign::where('id', 1950)->update(['name' => 'Updated']);
-Campaign::where('id', 1950)->delete();
+// query() returns a typed builder with full IDE autocomplete
+Campaign::query()->select('id', 'name')->withMeta('budget')->where('status', 'active')->getAll();
+Campaign::query()->insert(['name' => 'Summer Sale', 'slug' => 'summer-sale']);
+Campaign::query()->where('id', 1950)->update(['name' => 'Updated']);
+Campaign::query()->where('id', 1950)->delete();
 ```
 
 ## Table of Contents
@@ -176,9 +176,9 @@ class Product extends Model
 }
 
 // Every query automatically includes WHERE post_type = 'product'
-Product::where('post_status', 'publish')->getAll();
-Product::find('ID', 1911);
-Product::count('ID');
+Product::query()->where('post_status', 'publish')->getAll();
+Product::query()->find('ID', 1911);
+Product::query()->count('ID');
 ```
 
 ## Scopes
@@ -192,12 +192,12 @@ class Campaign extends Model
 
     public static function active(): ModelQueryBuilder
     {
-        return static::where('status', 'active');
+        return static::query()->where('status', 'active');
     }
 
     public static function p2p(): ModelQueryBuilder
     {
-        return static::where('campaign_type', 'p2p');
+        return static::query()->where('campaign_type', 'p2p');
     }
 }
 
@@ -220,7 +220,7 @@ $campaign->price = 29.99;
 $campaign->save();
 
 // Update existing
-$campaign = Campaign::find('id', 1950);
+$campaign = Campaign::query()->find('id', 1950);
 $campaign->name = 'Updated';
 $campaign->save();
 ```
@@ -266,17 +266,17 @@ class Campaign extends Model
 
 ```php
 // Single row
-Campaign::insert(['name' => 'Summer', 'slug' => 'summer']);
+Campaign::query()->insert(['name' => 'Summer', 'slug' => 'summer']);
 // Returns: QueryResult { affectedRows: 1, insertId: 1 }
 
 // bulk insert
-Campaign::insert([
+Campaign::query()->insert([
     ['name' => 'Summer', 'slug' => 'summer'],
     ['name' => 'Winter', 'slug' => 'winter'],
 ]);
 
 // insert with meta (meta fields are separated automatically)
-Campaign::withMeta('budget', 'channel')->insert([
+Campaign::query()->withMeta('budget', 'channel')->insert([
     'name'    => 'Summer',
     'slug'    => 'summer',
     'budget'  => '1950', // campaign_meta table
@@ -284,7 +284,7 @@ Campaign::withMeta('budget', 'channel')->insert([
 ]);
 
 // upsert (insert or update on duplicate key)
-Campaign::upsert(
+Campaign::query()->upsert(
     ['name' => 'Summer', 'slug' => 'summer'],
     ['slug'], // conflict columns
     ['name'], // columns to update
@@ -294,53 +294,53 @@ Campaign::upsert(
 ## Update
 
 ```php
-Campaign::where('id', 1)->update(['name' => 'Updated']);
+Campaign::query()->where('id', 1)->update(['name' => 'Updated']);
 
 // update meta
-Campaign::withMeta('budget')->where('id', 1)->update([
+Campaign::query()->withMeta('budget')->where('id', 1)->update([
     'name'   => 'Updated',
     'budget' => '1911',// updates meta row
 ]);
 
 // Increment / Decrement
-Campaign::where('id', 1)->increment('stock');
-Campaign::where('id', 1)->increment('stock', 5);
-Campaign::where('id', 1)->decrement('stock', 3);
+Campaign::query()->where('id', 1)->increment('stock');
+Campaign::query()->where('id', 1)->increment('stock', 5);
+Campaign::query()->where('id', 1)->decrement('stock', 3);
 
 // raw update
-Campaign::where('id', 1)->updateRaw("stock = stock + 1");
+Campaign::query()->where('id', 1)->updateRaw("stock = stock + 1");
 ```
 
 ## Delete
 
 ```php
-Campaign::where('id', 1)->delete();
+Campaign::query()->where('id', 1)->delete();
 // meta rows are deleted automatically if the model has meta config
 
 // truncate (clears both the table and meta table)
-Campaign::truncate();
+Campaign::query()->truncate();
 ```
 
 ## Select
 
 ```php
 // all columns
-Campaign::getAll();
+Campaign::query()->getAll();
 
 // select specific columns
-Campaign::select('id', 'name', 'slug')->getAll();
+Campaign::query()->select('id', 'name', 'slug')->getAll();
 
 // single row (LIMIT 1, returns null if not found)
-Campaign::select('id', 'name')->get();
+Campaign::query()->select('id', 'name')->get();
 
 // distinct
-Campaign::distinct()->select('status')->getAll();
+Campaign::query()->distinct()->select('status')->getAll();
 
 // select with alias
-Campaign::select(['id' => 'campaign_id'])->getAll();
+Campaign::query()->select(['id' => 'campaign_id'])->getAll();
 
 // raaw select
-Campaign::selectRaw('COUNT(*) as total')->get();
+Campaign::query()->selectRaw('COUNT(*) as total')->get();
 
 // Subquery in FROM
 DB::table(function ($qb) {
@@ -353,29 +353,29 @@ DB::table(function ($qb) {
 
 ```php
 // basic
-Campaign::where('status', 'active')->getAll();
-Campaign::where('status', 'active')->orWhere('status', 'pending')->getAll();
+Campaign::query()->where('status', 'active')->getAll();
+Campaign::query()->where('status', 'active')->orWhere('status', 'pending')->getAll();
 
 // LIKE
-Campaign::whereLike('name', 'summer')->getAll(); // LIKE '%summer%'
-Campaign::whereLike('name', 'summer%')->getAll(); // LIKE 'summer%'
+Campaign::query()->whereLike('name', 'summer')->getAll(); // LIKE '%summer%'
+Campaign::query()->whereLike('name', 'summer%')->getAll(); // LIKE 'summer%'
 
 // IN / NOT IN
-Campaign::whereIn('id', [1, 2, 3])->getAll();
-Campaign::whereNotIn('status', ['draft', 'trash'])->getAll();
+Campaign::query()->whereIn('id', [1, 2, 3])->getAll();
+Campaign::query()->whereNotIn('status', ['draft', 'trash'])->getAll();
 
 // BETWEEN
-Campaign::whereBetween('price', 10, 100)->getAll();
+Campaign::query()->whereBetween('price', 10, 100)->getAll();
 
 // NULL
-Campaign::whereIsNull('deleted_at')->getAll();
-Campaign::whereIsNotNull('email')->getAll();
+Campaign::query()->whereIsNull('deleted_at')->getAll();
+Campaign::query()->whereIsNotNull('email')->getAll();
 
 // column comparison (no value escaping), useful for JOINS
-Campaign::whereColumn('users.id', 'orders.user_id')->getAll();
+Campaign::query()->whereColumn('users.id', 'orders.user_id')->getAll();
 
 // nested groups
-Campaign::where('status', 'active')
+Campaign::query()->where('status', 'active')
     ->orWhere(function ($qb) {
         $qb->where('role', 'admin')->where('verified', 1);
     })
@@ -383,17 +383,17 @@ Campaign::where('status', 'active')
 // WHERE status = 'active' OR (role = 'admin' AND verified = 1)
 
 // Subquery
-Campaign::whereIn('id', function ($qb) {
+Campaign::query()->whereIn('id', function ($qb) {
     $qb->table('orders')->select('campaign_id')->where('total', 100, '>');
 })->getAll();
 
 // EXISTS
-Campaign::whereExists(function ($qb) {
+Campaign::query()->whereExists(function ($qb) {
     $qb->table('orders')->select('id')->whereRaw('orders.campaign_id = campaigns.id');
 })->getAll();
 
 // Raw
-Campaign::whereRaw('created_at > NOW() - INTERVAL 30 DAY')->getAll();
+Campaign::query()->whereRaw('created_at > NOW() - INTERVAL 30 DAY')->getAll();
 ```
 
 All where methods have `or` variants: `orWhere`, `orWhereLike`, `orWhereIn`, `orWhereBetween`, `orWhereIsNull`, `orWhereExists`, `orWhereColumn`.
@@ -401,48 +401,48 @@ All where methods have `or` variants: `orWhere`, `orWhereLike`, `orWhereIn`, `or
 ## Joins
 
 ```php
-Campaign::leftJoin('entries', 'campaigns.id', 'entries.campaign_id')->getAll();
-Campaign::innerJoin('entries', 'campaigns.id', 'entries.campaign_id')->getAll();
-Campaign::rightJoin('entries', 'campaigns.id', 'entries.campaign_id')->getAll();
-Campaign::crossJoin('statuses')->getAll();
+Campaign::query()->leftJoin('entries', 'campaigns.id', 'entries.campaign_id')->getAll();
+Campaign::query()->innerJoin('entries', 'campaigns.id', 'entries.campaign_id')->getAll();
+Campaign::query()->rightJoin('entries', 'campaigns.id', 'entries.campaign_id')->getAll();
+Campaign::query()->crossJoin('statuses')->getAll();
 
 // with alias
-Campaign::leftJoin('entries', 'campaigns.id', 'e.campaign_id', 'e')->getAll();
+Campaign::query()->leftJoin('entries', 'campaigns.id', 'e.campaign_id', 'e')->getAll();
 
 // raw join
-Campaign::joinRaw('LEFT JOIN entries e ON campaigns.id = e.campaign_id')->getAll();
+Campaign::query()->joinRaw('LEFT JOIN entries e ON campaigns.id = e.campaign_id')->getAll();
 ```
 
 ## Ordering, Grouping, Limit & Offset
 
 ```php
-Campaign::orderBy('name')->getAll();
-Campaign::orderBy('name', 'DESC')->getAll();
-Campaign::orderByRaw('RAND()')->getAll();
+Campaign::query()->orderBy('name')->getAll();
+Campaign::query()->orderBy('name', 'DESC')->getAll();
+Campaign::query()->orderByRaw('RAND()')->getAll();
 
-Campaign::groupBy('status')->getAll();
-Campaign::groupBy('status', 'channel')->getAll();
-Campaign::groupByRaw('YEAR(created_at)')->getAll();
+Campaign::query()->groupBy('status')->getAll();
+Campaign::query()->groupBy('status', 'channel')->getAll();
+Campaign::query()->groupByRaw('YEAR(created_at)')->getAll();
 
-Campaign::limit(10)->offset(20)->getAll();
+Campaign::query()->limit(10)->offset(20)->getAll();
 
 // order and group by meta keys
-Campaign::withMeta('budget')->orderBy('budget', 'DESC')->getAll();
-Campaign::withMeta('channel')->groupBy('channel')->getAll();
+Campaign::query()->withMeta('budget')->orderBy('budget', 'DESC')->getAll();
+Campaign::query()->withMeta('channel')->groupBy('channel')->getAll();
 ```
 
 ## Having
 
 ```php
-Campaign::groupBy('status')->havingCount('id', '>', 5)->getAll();
-Campaign::groupBy('status')->havingSum('stock', '>', 100)->getAll();
-Campaign::groupBy('status')->havingAvg('price', '>', 50)->getAll();
-Campaign::groupBy('status')->havingMin('price', '>', 10)->getAll();
-Campaign::groupBy('status')->havingMax('price', '<', 1000)->getAll();
-Campaign::groupBy('status')->havingRaw('COUNT(id) > 5')->getAll();
+Campaign::query()->groupBy('status')->havingCount('id', '>', 5)->getAll();
+Campaign::query()->groupBy('status')->havingSum('stock', '>', 100)->getAll();
+Campaign::query()->groupBy('status')->havingAvg('price', '>', 50)->getAll();
+Campaign::query()->groupBy('status')->havingMin('price', '>', 10)->getAll();
+Campaign::query()->groupBy('status')->havingMax('price', '<', 1000)->getAll();
+Campaign::query()->groupBy('status')->havingRaw('COUNT(id) > 5')->getAll();
 
 // combine with OR
-Campaign::groupBy('status')
+Campaign::query()->groupBy('status')
     ->havingSum('stock', '>', 100)
     ->orHavingAvg('price', '>', 200)
     ->getAll();
@@ -451,35 +451,35 @@ Campaign::groupBy('status')
 ## Union
 
 ```php
-$drafts = Campaign::where('status', 'draft')->select('id', 'name');
-Campaign::where('status', 'active')->select('id', 'name')->union($drafts)->getAll();
+$drafts = Campaign::query()->where('status', 'draft')->select('id', 'name');
+Campaign::query()->where('status', 'active')->select('id', 'name')->union($drafts)->getAll();
 
 // Union ALL
-Campaign::select('id')->unionAll($drafts)->getAll();
+Campaign::query()->select('id')->unionAll($drafts)->getAll();
 ```
 
 ## Aggregates
 
 ```php
-Campaign::count('id'); // int
-Campaign::sum('price'); // float
-Campaign::avg('price'); // float
-Campaign::min('price'); // float
-Campaign::max('price'); // float
+Campaign::query()->count('id'); // int
+Campaign::query()->sum('price'); // float
+Campaign::query()->avg('price'); // float
+Campaign::query()->min('price'); // float
+Campaign::query()->max('price'); // float
 
 // with conditions
-Campaign::where('status', 'active')->count('id');
+Campaign::query()->where('status', 'active')->count('id');
 ```
 
 ## Find & Exists
 
 ```php
 // find by column. returns model instance or null
-Campaign::find('id', 1950);
-Campaign::find('slug', 'summer');
+Campaign::query()->find('id', 1950);
+Campaign::query()->find('slug', 'summer');
 
 // check if rows exist. returns bool
-Campaign::where('slug', 'summer')->exists();
+Campaign::query()->where('slug', 'summer')->exists();
 ```
 
 ## Pluck
@@ -487,7 +487,7 @@ Campaign::where('slug', 'summer')->exists();
 Returns a flat array of a single column values:
 
 ```php
-Campaign::pluck('name');
+Campaign::query()->pluck('name');
 // ['Save the dolphins', 'All alcoholic beverages 20% off', 'Yeah, no']
 ```
 
@@ -546,13 +546,13 @@ Some meta keys can have multiple rows with the same key. Mark these with `'multi
 
 **Single values**
 ```php
-$campaign = Campaign::select('id')->withMeta('budget')->get();
+$campaign = Campaign::query()->select('id')->withMeta('budget')->get();
 $campaign->budget; // 5000
 ```
 
 **Multiple values** are parsed into arrays:
 ```php
-$campaign = Campaign::select('id')->withMeta('tags')->groupBy('id')->get();
+$campaign = Campaign::query()->select('id')->withMeta('tags')->groupBy('id')->get();
 $campaign->tags; // ['promo', 'seasonal', 'email']
 ```
 
@@ -562,7 +562,7 @@ $campaign->tags; // ['promo', 'seasonal', 'email']
 
 ```php
 // get specific keys
-Campaign::select('id', 'name')
+Campaign::query()->select('id', 'name')
     ->withMeta('budget', 'channel')
     ->where('budget', 1000, '>') // WHERE meta_budget.meta_value > 1000
     ->orderBy('budget', 'DESC') // ORDER BY meta_budget.meta_value DESC
@@ -570,14 +570,14 @@ Campaign::select('id', 'name')
     ->getAll();
 
 // get campaign with all meta keys
-Campaign::select('id', 'name')->withMeta()->getAll();
+Campaign::query()->select('id', 'name')->withMeta()->getAll();
 ```
 
 ### Meta in Mutations
 
 ```php
 // Insert: meta fields are auto-separated from table columns
-Campaign::withMeta('budget', 'tags')->insert([
+Campaign::query()->withMeta('budget', 'tags')->insert([
     'name' => 'Summer',
     'slug' => 'summer',
     'budget' => '1911', // 1 row in campaign_meta
@@ -585,13 +585,13 @@ Campaign::withMeta('budget', 'tags')->insert([
 ]);
 
 // Update: single meta upserted, multiple meta replaced
-Campaign::withMeta('budget', 'tags')->where('id', 1)->update([
+Campaign::query()->withMeta('budget', 'tags')->where('id', 1)->update([
     'budget' => '1950', // updates existing meta row
     'tags' => ['promo', 'holiday'], // deletes old rows, inserts new
 ]);
 
 // Delete: meta rows are deleted before campaign
-Campaign::withMeta('budget')->where('id', 1)->delete();
+Campaign::query()->withMeta('budget')->where('id', 1)->delete();
 ```
 
 ## Relations
@@ -618,7 +618,7 @@ protected function relations(): array
 
 ```php
 // eager load relations with with()
-$campaign = Campaign::select('id', 'name')->with('entries')->get();
+$campaign = Campaign::query()->select('id', 'name')->with('entries')->get();
 
 // hasMany returns an array
 $campaign->entries;
@@ -744,8 +744,8 @@ protected function meta(): array
 ```php
 // using a model
 Campaign::transaction(function () {
-    Campaign::insert(['name' => 'A', 'slug' => 'a']);
-    Campaign::insert(['name' => 'B', 'slug' => 'b']);
+    Campaign::query()->insert(['name' => 'A', 'slug' => 'a']);
+    Campaign::query()->insert(['name' => 'B', 'slug' => 'b']);
 });
 
 // using DB facade
@@ -772,7 +772,7 @@ Conditionally add clauses
 ```php
 $status = $_GET['status'] ?? null;
 
-Campaign::select('id', 'name')
+Campaign::query()->select('id', 'name')
     ->when($status, fn ($qb) => $qb->where('status', $status))
     ->getAll();
 ```
@@ -782,7 +782,7 @@ Campaign::select('id', 'name')
 Create an independent copy to build query variants
 
 ```php
-$base = Campaign::select('id', 'name');
+$base = Campaign::query()->select('id', 'name');
 $active = $base->clone()->where('status', 'active');
 $drafts = $base->clone()->where('status', 'draft');
 ```
@@ -792,6 +792,6 @@ $drafts = $base->clone()->where('status', 'draft');
 Get the generated SQL without executing:
 
 ```php
-Campaign::select('id', 'name')->where('status', 'active')->toSQL();
+Campaign::query()->select('id', 'name')->where('status', 'active')->toSQL();
 // SELECT id, name FROM wp_campaigns WHERE status = 'active'
 ```
