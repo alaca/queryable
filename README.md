@@ -121,7 +121,6 @@ $campaign instanceof Campaign; // true
 $campaign->name;
 $campaign->price; // float, auto-cast from DB  - should be unsigned int in real app! 
 
-// query() returns a typed builder with full IDE autocomplete
 Campaign::query()->select('id', 'name')->withMeta('budget')->where('status', 'active')->getAll();
 Campaign::query()->insert(['name' => 'Summer Sale', 'slug' => 'summer-sale']);
 Campaign::query()->where('id', 1950)->update(['name' => 'Updated']);
