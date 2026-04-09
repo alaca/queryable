@@ -183,13 +183,16 @@ trait HasMeta
             );
         }
 
-        // Single-value keys: upsert one at a time (can't batch these safely)
-        foreach ($ids as $id) {
-            foreach ($singleUpdates as $key => $value) {
-                $escaped = RawSQL::escape($value);
-                $result = $this->execute("UPDATE {$metaTable} SET {$metaValueCol} = {$escaped} WHERE {$foreignKey} = {$id} AND {$metaKeyCol} = '{$key}'");
-                if ($result->affectedRows === 0) {
-                    $this->execute("INSERT INTO {$metaTable} ({$foreignKey}, {$metaKeyCol}, {$metaValueCol}) VALUES ({$id}, '{$key}', {$escaped})");
+        // Single-value keys: delete + batch insert
+        if (!empty($singleUpdates)) {
+            $singleKeys = array_map(fn ($k) => "'{$k}'", array_keys($singleUpdates));
+            $singleKeyList = implode(', ', $singleKeys);
+            $this->execute("DELETE FROM {$metaTable} WHERE {$foreignKey} IN ({$idList}) AND {$metaKeyCol} IN ({$singleKeyList})");
+
+            $insertValues = [];
+            foreach ($ids as $id) {
+                foreach ($singleUpdates as $key => $value) {
+                    $insertValues[] = "({$id}, '{$key}', " . RawSQL::escape($value) . ')';
                 }
             }
 
