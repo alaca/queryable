@@ -343,6 +343,23 @@ class ModelTest extends \WP_UnitTestCase
         $this->assertEquals('email', $campaign->channel);
     }
 
+    public function testWithMetaWithoutExplicitSelect(): void
+    {
+        Campaign::withMeta('budget')->insert([
+            'name' => 'Summer',
+            'slug' => 'summer',
+            'budget' => '5000',
+        ]);
+
+        $campaign = Campaign::withMeta('budget')->find('slug', 'summer');
+
+        $this->assertInstanceOf(Campaign::class, $campaign);
+        $this->assertEquals('Summer', $campaign->name);
+        $this->assertEquals('summer', $campaign->slug);
+        $this->assertEquals('5000', $campaign->budget);
+        $this->assertNotEmpty($campaign->id);
+    }
+
     public function testUpdateMeta(): void
     {
         Campaign::withMeta('budget')->insert([
