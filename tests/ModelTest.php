@@ -135,9 +135,9 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testGetReturnsModelInstance(): void
     {
-        Campaign::insert(['name' => 'Summer', 'slug' => 'summer']);
+        Campaign::query()->insert(['name' => 'Summer', 'slug' => 'summer']);
 
-        $campaign = Campaign::get();
+        $campaign = Campaign::query()->get();
 
         $this->assertInstanceOf(Campaign::class, $campaign);
         $this->assertEquals('Summer', $campaign->name);
@@ -146,12 +146,12 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testGetAllReturnsModelInstances(): void
     {
-        Campaign::insert([
+        Campaign::query()->insert([
             ['name' => 'Summer', 'slug' => 'summer'],
             ['name' => 'Winter', 'slug' => 'winter'],
         ]);
 
-        $campaigns = Campaign::getAll();
+        $campaigns = Campaign::query()->getAll();
 
         $this->assertCount(2, $campaigns);
         $this->assertInstanceOf(Campaign::class, $campaigns[0]);
@@ -162,9 +162,9 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testFindReturnsModelInstance(): void
     {
-        Campaign::insert(['name' => 'Summer', 'slug' => 'summer']);
+        Campaign::query()->insert(['name' => 'Summer', 'slug' => 'summer']);
 
-        $campaign = Campaign::find('slug', 'summer');
+        $campaign = Campaign::query()->find('slug', 'summer');
 
         $this->assertInstanceOf(Campaign::class, $campaign);
         $this->assertEquals('Summer', $campaign->name);
@@ -172,14 +172,14 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testFindReturnsNull(): void
     {
-        $this->assertNull(Campaign::find('slug', 'nonexistent'));
+        $this->assertNull(Campaign::query()->find('slug', 'nonexistent'));
     }
 
     public function testToArray(): void
     {
-        Campaign::insert(['name' => 'Summer', 'slug' => 'summer']);
+        Campaign::query()->insert(['name' => 'Summer', 'slug' => 'summer']);
 
-        $campaign = Campaign::find('slug', 'summer');
+        $campaign = Campaign::query()->find('slug', 'summer');
         $array = $campaign->toArray();
 
         $this->assertIsArray($array);
@@ -188,7 +188,7 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testInsert(): void
     {
-        $result = Campaign::insert(['name' => 'Summer', 'slug' => 'summer']);
+        $result = Campaign::query()->insert(['name' => 'Summer', 'slug' => 'summer']);
 
         $this->assertEquals(1, $result->affectedRows);
         $this->assertEquals(1, $result->insertId);
@@ -196,19 +196,19 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testBulkInsert(): void
     {
-        Campaign::insert([
+        Campaign::query()->insert([
             ['name' => 'Summer', 'slug' => 'summer'],
             ['name' => 'Winter', 'slug' => 'winter'],
         ]);
 
-        $this->assertEquals(2, Campaign::count('id'));
+        $this->assertEquals(2, Campaign::query()->count('id'));
     }
 
     public function testSelectColumns(): void
     {
-        Campaign::insert(['name' => 'Summer', 'slug' => 'summer']);
+        Campaign::query()->insert(['name' => 'Summer', 'slug' => 'summer']);
 
-        $campaign = Campaign::select('name', 'slug')->get();
+        $campaign = Campaign::query()->select('name', 'slug')->get();
 
         $this->assertEquals('Summer', $campaign->name);
         $this->assertEquals('summer', $campaign->slug);
@@ -216,12 +216,12 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testWhere(): void
     {
-        Campaign::insert([
+        Campaign::query()->insert([
             ['name' => 'Active', 'slug' => 'active'],
             ['name' => 'Draft', 'slug' => 'draft'],
         ]);
 
-        $campaigns = Campaign::where('slug', 'active')->getAll();
+        $campaigns = Campaign::query()->where('slug', 'active')->getAll();
 
         $this->assertCount(1, $campaigns);
         $this->assertEquals('Active', $campaigns[0]->name);
@@ -229,86 +229,86 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testWhereChain(): void
     {
-        Campaign::insert([
+        Campaign::query()->insert([
             ['name' => 'A', 'slug' => 'a'],
             ['name' => 'B', 'slug' => 'b'],
             ['name' => 'C', 'slug' => 'c'],
         ]);
 
-        $campaigns = Campaign::where('name', 'A')->orWhere('name', 'C')->getAll();
+        $campaigns = Campaign::query()->where('name', 'A')->orWhere('name', 'C')->getAll();
 
         $this->assertCount(2, $campaigns);
     }
 
     public function testUpdate(): void
     {
-        Campaign::insert(['name' => 'Old', 'slug' => 'test']);
-        Campaign::where('slug', 'test')->update(['name' => 'New']);
+        Campaign::query()->insert(['name' => 'Old', 'slug' => 'test']);
+        Campaign::query()->where('slug', 'test')->update(['name' => 'New']);
 
-        $campaign = Campaign::find('slug', 'test');
+        $campaign = Campaign::query()->find('slug', 'test');
         $this->assertEquals('New', $campaign->name);
     }
 
     public function testDelete(): void
     {
-        Campaign::insert(['name' => 'Test', 'slug' => 'test']);
-        Campaign::where('slug', 'test')->delete();
+        Campaign::query()->insert(['name' => 'Test', 'slug' => 'test']);
+        Campaign::query()->where('slug', 'test')->delete();
 
-        $this->assertEquals(0, Campaign::count('id'));
+        $this->assertEquals(0, Campaign::query()->count('id'));
     }
 
     public function testCount(): void
     {
-        Campaign::insert([
+        Campaign::query()->insert([
             ['name' => 'A', 'slug' => 'a'],
             ['name' => 'B', 'slug' => 'b'],
             ['name' => 'C', 'slug' => 'c'],
         ]);
 
-        $this->assertEquals(3, Campaign::count('id'));
+        $this->assertEquals(3, Campaign::query()->count('id'));
     }
 
     public function testSumAvgMinMax(): void
     {
-        Campaign::insert([
+        Campaign::query()->insert([
             ['name' => 'A', 'slug' => 'a', 'price' => 10.00, 'stock' => 5],
             ['name' => 'B', 'slug' => 'b', 'price' => 20.00, 'stock' => 15],
             ['name' => 'C', 'slug' => 'c', 'price' => 30.00, 'stock' => 25],
         ]);
 
-        $this->assertEquals(60.0, Campaign::sum('price'));
-        $this->assertEquals(20.0, Campaign::avg('price'));
-        $this->assertEquals(10.0, Campaign::min('price'));
-        $this->assertEquals(30.0, Campaign::max('price'));
+        $this->assertEquals(60.0, Campaign::query()->sum('price'));
+        $this->assertEquals(20.0, Campaign::query()->avg('price'));
+        $this->assertEquals(10.0, Campaign::query()->min('price'));
+        $this->assertEquals(30.0, Campaign::query()->max('price'));
     }
 
     public function testExists(): void
     {
-        Campaign::insert(['name' => 'Test', 'slug' => 'test']);
+        Campaign::query()->insert(['name' => 'Test', 'slug' => 'test']);
 
-        $this->assertTrue(Campaign::where('slug', 'test')->exists());
-        $this->assertFalse(Campaign::where('slug', 'nope')->exists());
+        $this->assertTrue(Campaign::query()->where('slug', 'test')->exists());
+        $this->assertFalse(Campaign::query()->where('slug', 'nope')->exists());
     }
 
     public function testPluck(): void
     {
-        Campaign::insert([
+        Campaign::query()->insert([
             ['name' => 'Alpha', 'slug' => 'alpha'],
             ['name' => 'Beta', 'slug' => 'beta'],
         ]);
 
-        $this->assertEquals(['Alpha', 'Beta'], Campaign::pluck('name'));
+        $this->assertEquals(['Alpha', 'Beta'], Campaign::query()->pluck('name'));
     }
 
     public function testOrderBy(): void
     {
-        Campaign::insert([
+        Campaign::query()->insert([
             ['name' => 'B', 'slug' => 'b'],
             ['name' => 'A', 'slug' => 'a'],
             ['name' => 'C', 'slug' => 'c'],
         ]);
 
-        $campaigns = Campaign::select('name')->orderBy('name')->getAll();
+        $campaigns = Campaign::query()->select('name')->orderBy('name')->getAll();
 
         $this->assertEquals('A', $campaigns[0]->name);
         $this->assertEquals('C', $campaigns[2]->name);
@@ -316,13 +316,13 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testLimitOffset(): void
     {
-        Campaign::insert([
+        Campaign::query()->insert([
             ['name' => 'A', 'slug' => 'a'],
             ['name' => 'B', 'slug' => 'b'],
             ['name' => 'C', 'slug' => 'c'],
         ]);
 
-        $campaigns = Campaign::select('name')->orderBy('name')->limit(2)->offset(1)->getAll();
+        $campaigns = Campaign::query()->select('name')->orderBy('name')->limit(2)->offset(1)->getAll();
 
         $this->assertCount(2, $campaigns);
         $this->assertEquals('B', $campaigns[0]->name);
@@ -330,14 +330,14 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testInsertWithMeta(): void
     {
-        Campaign::withMeta('budget', 'channel')->insert([
+        Campaign::query()->withMeta('budget', 'channel')->insert([
             'name' => 'Summer',
             'slug' => 'summer',
             'budget' => '5000',
             'channel' => 'email',
         ]);
 
-        $campaign = Campaign::select('id', 'name')->withMeta('budget', 'channel')->find('slug', 'summer');
+        $campaign = Campaign::query()->select('id', 'name')->withMeta('budget', 'channel')->find('slug', 'summer');
 
         $this->assertEquals('5000', $campaign->budget);
         $this->assertEquals('email', $campaign->channel);
@@ -345,13 +345,13 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testWithMetaWithoutExplicitSelect(): void
     {
-        Campaign::withMeta('budget')->insert([
+        Campaign::query()->withMeta('budget')->insert([
             'name' => 'Summer',
             'slug' => 'summer',
             'budget' => '5000',
         ]);
 
-        $campaign = Campaign::withMeta('budget')->find('slug', 'summer');
+        $campaign = Campaign::query()->withMeta('budget')->find('slug', 'summer');
 
         $this->assertInstanceOf(Campaign::class, $campaign);
         $this->assertEquals('Summer', $campaign->name);
@@ -362,26 +362,26 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testUpdateMeta(): void
     {
-        Campaign::withMeta('budget')->insert([
+        Campaign::query()->withMeta('budget')->insert([
             'name' => 'Test',
             'slug' => 'test',
             'budget' => '5000',
         ]);
 
-        Campaign::withMeta('budget')->where('slug', 'test')->update([
+        Campaign::query()->withMeta('budget')->where('slug', 'test')->update([
             'budget' => '7500',
         ]);
 
-        $campaign = Campaign::select('id')->withMeta('budget')->find('slug', 'test');
+        $campaign = Campaign::query()->select('id')->withMeta('budget')->find('slug', 'test');
         $this->assertEquals('7500', $campaign->budget);
     }
 
     public function testOrderByMeta(): void
     {
-        Campaign::withMeta('budget')->insert(['name' => 'Cheap', 'slug' => 'cheap', 'budget' => '100']);
-        Campaign::withMeta('budget')->insert(['name' => 'Expensive', 'slug' => 'expensive', 'budget' => '9999']);
+        Campaign::query()->withMeta('budget')->insert(['name' => 'Cheap', 'slug' => 'cheap', 'budget' => '100']);
+        Campaign::query()->withMeta('budget')->insert(['name' => 'Expensive', 'slug' => 'expensive', 'budget' => '9999']);
 
-        $campaigns = Campaign::select('name')->withMeta('budget')->orderBy('budget', 'DESC')->getAll();
+        $campaigns = Campaign::query()->select('name')->withMeta('budget')->orderBy('budget', 'DESC')->getAll();
 
         $this->assertEquals('Expensive', $campaigns[0]->name);
         $this->assertEquals('Cheap', $campaigns[1]->name);
@@ -389,10 +389,10 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testWhereByMeta(): void
     {
-        Campaign::withMeta('budget')->insert(['name' => 'Low', 'slug' => 'low', 'budget' => '100']);
-        Campaign::withMeta('budget')->insert(['name' => 'High', 'slug' => 'high', 'budget' => '9999']);
+        Campaign::query()->withMeta('budget')->insert(['name' => 'Low', 'slug' => 'low', 'budget' => '100']);
+        Campaign::query()->withMeta('budget')->insert(['name' => 'High', 'slug' => 'high', 'budget' => '9999']);
 
-        $campaigns = Campaign::select('name')->withMeta('budget')->where('budget', 1000, '>')->getAll();
+        $campaigns = Campaign::query()->select('name')->withMeta('budget')->where('budget', 1000, '>')->getAll();
 
         $this->assertCount(1, $campaigns);
         $this->assertEquals('High', $campaigns[0]->name);
@@ -400,13 +400,13 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testInsertMultipleMeta(): void
     {
-        Campaign::withMeta('tags')->insert([
+        Campaign::query()->withMeta('tags')->insert([
             'name' => 'Summer',
             'slug' => 'summer',
             'tags' => ['promo', 'seasonal', 'email'],
         ]);
 
-        $campaign = Campaign::select('id', 'name')
+        $campaign = Campaign::query()->select('id', 'name')
             ->withMeta('tags')
             ->groupBy('id', 'name')
             ->find('slug', 'summer');
@@ -418,17 +418,17 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testUpdateMultipleMetaReplaces(): void
     {
-        Campaign::withMeta('tags')->insert([
+        Campaign::query()->withMeta('tags')->insert([
             'name' => 'Test',
             'slug' => 'test',
             'tags' => ['old1', 'old2'],
         ]);
 
-        Campaign::withMeta('tags')->where('slug', 'test')->update([
+        Campaign::query()->withMeta('tags')->where('slug', 'test')->update([
             'tags' => ['new1', 'new2', 'new3'],
         ]);
 
-        $campaign = Campaign::select('id')
+        $campaign = Campaign::query()->select('id')
             ->withMeta('tags')
             ->groupBy('id')
             ->find('slug', 'test');
@@ -440,14 +440,14 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testSingleAndMultipleMetaTogether(): void
     {
-        Campaign::withMeta('budget', 'tags')->insert([
+        Campaign::query()->withMeta('budget', 'tags')->insert([
             'name' => 'Mixed',
             'slug' => 'mixed',
             'budget' => '5000',
             'tags' => ['promo', 'sale'],
         ]);
 
-        $campaign = Campaign::select('id', 'name')
+        $campaign = Campaign::query()->select('id', 'name')
             ->withMeta('budget', 'tags')
             ->groupBy('id', 'name')
             ->find('slug', 'mixed');
@@ -459,12 +459,12 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testWithHasMany(): void
     {
-        Campaign::insert(['name' => 'Test', 'slug' => 'test']);
+        Campaign::query()->insert(['name' => 'Test', 'slug' => 'test']);
 
-        CampaignEntry::insert(['campaign_id' => 1, 'email' => 'a@test.com']);
-        CampaignEntry::insert(['campaign_id' => 1, 'email' => 'b@test.com']);
+        CampaignEntry::query()->insert(['campaign_id' => 1, 'email' => 'a@test.com']);
+        CampaignEntry::query()->insert(['campaign_id' => 1, 'email' => 'b@test.com']);
 
-        $campaign = Campaign::select('id', 'name')->with('entries')->get();
+        $campaign = Campaign::query()->select('id', 'name')->with('entries')->get();
 
         $this->assertCount(2, $campaign->entries);
         $this->assertEquals('a@test.com', $campaign->entries[0]['email']);
@@ -472,9 +472,9 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testWithHasManyEmpty(): void
     {
-        Campaign::insert(['name' => 'Empty', 'slug' => 'empty']);
+        Campaign::query()->insert(['name' => 'Empty', 'slug' => 'empty']);
 
-        $campaign = Campaign::select('id', 'name')->with('entries')->get();
+        $campaign = Campaign::query()->select('id', 'name')->with('entries')->get();
 
         $this->assertEmpty($campaign->entries);
     }
@@ -495,7 +495,7 @@ class ModelTest extends \WP_UnitTestCase
 
         $this->assertNotEmpty($campaign->id);
 
-        $found = Campaign::find('id', $campaign->id);
+        $found = Campaign::query()->find('id', $campaign->id);
         $this->assertInstanceOf(Campaign::class, $found);
         $this->assertEquals('Summer', $found->name);
         $this->assertEquals('summer', $found->slug);
@@ -503,13 +503,13 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testSaveUpdatesExistingRecord(): void
     {
-        Campaign::insert(['name' => 'Old', 'slug' => 'test']);
+        Campaign::query()->insert(['name' => 'Old', 'slug' => 'test']);
 
-        $campaign = Campaign::find('slug', 'test');
+        $campaign = Campaign::query()->find('slug', 'test');
         $campaign->name = 'New';
         $campaign->save();
 
-        $updated = Campaign::find('slug', 'test');
+        $updated = Campaign::query()->find('slug', 'test');
         $this->assertEquals('New', $updated->name);
     }
 
@@ -532,24 +532,24 @@ class ModelTest extends \WP_UnitTestCase
         $campaign->channel = 'email';
         $campaign->save();
 
-        $found = Campaign::select('id', 'name')->withMeta('budget', 'channel')->find('id', $campaign->id);
+        $found = Campaign::query()->select('id', 'name')->withMeta('budget', 'channel')->find('id', $campaign->id);
         $this->assertEquals('5000', $found->budget);
         $this->assertEquals('email', $found->channel);
     }
 
     public function testSaveUpdatesMeta(): void
     {
-        Campaign::withMeta('budget')->insert([
+        Campaign::query()->withMeta('budget')->insert([
             'name' => 'Test',
             'slug' => 'test',
             'budget' => '5000',
         ]);
 
-        $campaign = Campaign::select('id', 'name', 'slug')->withMeta('budget')->find('slug', 'test');
+        $campaign = Campaign::query()->select('id', 'name', 'slug')->withMeta('budget')->find('slug', 'test');
         $campaign->budget = '9000';
         $campaign->save();
 
-        $found = Campaign::select('id')->withMeta('budget')->find('slug', 'test');
+        $found = Campaign::query()->select('id')->withMeta('budget')->find('slug', 'test');
         $this->assertEquals('9000', $found->budget);
     }
 
@@ -557,7 +557,7 @@ class ModelTest extends \WP_UnitTestCase
     {
         global $wpdb;
 
-        $sql = Campaign::select('id', 'name')->where('slug', 'test')->toSQL();
+        $sql = Campaign::query()->select('id', 'name')->where('slug', 'test')->toSQL();
 
         $this->assertEquals(
             "SELECT id, name FROM {$wpdb->prefix}campaigns WHERE slug = 'test'",
@@ -603,11 +603,11 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testMigrateIsIdempotent(): void
     {
-        Campaign::insert(['name' => 'Test', 'slug' => 'test']);
+        Campaign::query()->insert(['name' => 'Test', 'slug' => 'test']);
 
         Campaign::migrate(true);
 
-        $campaign = Campaign::find('slug', 'test');
+        $campaign = Campaign::query()->find('slug', 'test');
         $this->assertEquals('Test', $campaign->name);
     }
 
@@ -627,16 +627,16 @@ class ModelTest extends \WP_UnitTestCase
 
     public function testMigratePreservesData(): void
     {
-        Campaign::insert(['name' => 'Summer', 'slug' => 'summer']);
-        Campaign::withMeta('budget')->insert(['name' => 'Winter', 'slug' => 'winter', 'budget' => '5000']);
+        Campaign::query()->insert(['name' => 'Summer', 'slug' => 'summer']);
+        Campaign::query()->withMeta('budget')->insert(['name' => 'Winter', 'slug' => 'winter', 'budget' => '5000']);
 
         CampaignV2::migrate(true);
 
-        $this->assertEquals(2, Campaign::count('id'));
-        $campaign = Campaign::find('slug', 'summer');
+        $this->assertEquals(2, Campaign::query()->count('id'));
+        $campaign = Campaign::query()->find('slug', 'summer');
         $this->assertEquals('Summer', $campaign->name);
 
-        $meta = Campaign::select('id')->withMeta('budget')->find('slug', 'winter');
+        $meta = Campaign::query()->select('id')->withMeta('budget')->find('slug', 'winter');
         $this->assertEquals('5000', $meta->budget);
     }
 

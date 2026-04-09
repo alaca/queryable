@@ -186,12 +186,7 @@ abstract class Model
         return array_merge($public, $this->extras);
     }
 
-    public static function __callStatic(string $method, array $args): mixed
-    {
-        return static::newBuilder()->$method(...$args);
-    }
-
-    public static function schema(Closure $callback): void
+	public static function schema(Closure $callback): void
     {
         static::$schemas[static::class] = $callback;
     }
