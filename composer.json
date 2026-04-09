@@ -1,0 +1,29 @@
+{
+    "name": "alaca/queryable",
+    "description": "A fluent SQL query builder for WordPress",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Queryable\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Queryable\\Tests\\": "tests/"
+        }
+    },
+    "require": {
+        "php": ">=8.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.0",
+        "yoast/phpunit-polyfills": "^2.0",
+        "friendsofphp/php-cs-fixer": "^3.94"
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test:wp": "vendor/bin/phpunit -c phpunit-wp.xml"
+    },
+    "minimum-stability": "stable"
+}
