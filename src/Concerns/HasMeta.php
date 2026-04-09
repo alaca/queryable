@@ -49,6 +49,10 @@ trait HasMeta
         $metaValueCol = $metaConfig['metaValue'] ?? 'meta_value';
         $baseTable = $this->query['table'][0]->name ?? null;
 
+        if (empty($this->query['select'])) {
+            $this->query['select'][] = new RawSQL($baseTable ? "{$baseTable}.*" : '*');
+        }
+
         foreach ($this->metaKeys as $alias => $actualKey) {
             $joinAlias = "meta_{$alias}";
             $localRef = $baseTable ? "{$baseTable}.{$primaryKey}" : $primaryKey;
@@ -188,6 +192,10 @@ trait HasMeta
                     $this->execute("INSERT INTO {$metaTable} ({$foreignKey}, {$metaKeyCol}, {$metaValueCol}) VALUES ({$id}, '{$key}', {$escaped})");
                 }
             }
+
+            $this->execute(
+                "INSERT INTO {$metaTable} ({$foreignKey}, {$metaKeyCol}, {$metaValueCol}) VALUES " . implode(', ', $insertValues),
+            );
         }
     }
 
