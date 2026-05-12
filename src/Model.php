@@ -19,6 +19,9 @@ abstract class Model
     private array $extras = [];
     private static array $schemas = [];
 
+    /** @var array<class-string, array{json: array<string>}> */
+    private static array $columnMetaCache = [];
+
     private function __construct()
     {
     }
@@ -89,6 +92,16 @@ abstract class Model
 
     protected static function fromRow(array $row): static
     {
+        $jsonCols = static::columnMeta()['json'];
+        foreach ($jsonCols as $col) {
+            if (isset($row[$col]) && is_string($row[$col]) && $row[$col] !== '') {
+                $decoded = json_decode($row[$col], true);
+                if (is_array($decoded)) {
+                    $row[$col] = $decoded;
+                }
+            }
+        }
+
         $instance = new static();
         $ref = new ReflectionClass(static::class);
 
@@ -101,6 +114,35 @@ abstract class Model
         }
 
         return $instance;
+    }
+
+    /** @return array{json: array<string>} */
+    private static function columnMeta(): array
+    {
+        $class = static::class;
+
+        if (isset(self::$columnMetaCache[$class])) {
+            return self::$columnMetaCache[$class];
+        }
+
+        $callback = static::$schemas[$class] ?? null;
+
+        if (!$callback) {
+            return self::$columnMetaCache[$class] = ['json' => []];
+        }
+
+        $t = new Table();
+        $callback($t);
+
+        $jsonCols = [];
+        foreach ($t->getColumns() as $col) {
+            $def = $col->getDefinition();
+            if (stripos((string) $def['type'], 'JSON') !== false) {
+                $jsonCols[] = $def['name'];
+            }
+        }
+
+        return self::$columnMetaCache[$class] = ['json' => $jsonCols];
     }
 
     private static function castValue(mixed $value, ReflectionProperty $prop): mixed
@@ -152,6 +194,14 @@ abstract class Model
         // filter out unset properties
         $data = array_filter($this->toArray(), fn ($v) => $v !== null);
         $pk = $this->primaryKey;
+
+        $jsonCols = static::columnMeta()['json'];
+        foreach ($jsonCols as $col) {
+            if (isset($data[$col]) && is_array($data[$col])) {
+                $data[$col] = json_encode($data[$col], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+        }
+
         $builder = static::newBuilder();
 
         // handle meta properties

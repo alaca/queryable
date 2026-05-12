@@ -104,6 +104,65 @@ CampaignV2::schema(function (Table $table) {
     $table->datetime('created_at')->nullable();
 });
 
+class TestModelWithJson extends Model
+{
+    protected string $table = 'test_models_with_json';
+
+    public int $id;
+    public string $label = '';
+    public ?array $payload = null;
+}
+
+TestModelWithJson::schema(function (Table $table) {
+    $table->id();
+    $table->string('label', 100)->default('');
+    $table->json('payload')->nullable();
+});
+
+class TestModelWithJsonStringProp extends Model
+{
+    protected string $table = 'test_models_str_payload';
+
+    public int $id;
+    public string $label = '';
+    public ?string $payload = null;
+}
+
+TestModelWithJsonStringProp::schema(function (Table $table) {
+    $table->id();
+    $table->string('label', 100)->default('');
+    $table->json('payload')->nullable();
+});
+
+class TestModelNoJson extends Model
+{
+    protected string $table = 'test_models_no_json';
+
+    public int $id;
+    public string $name;
+}
+
+TestModelNoJson::schema(function (Table $table) {
+    $table->id();
+    $table->string('name', 100);
+});
+
+class TestCountingSchema extends Model
+{
+    protected string $table = 'test_counting_schemas';
+
+    public int $id;
+    public ?array $payload = null;
+
+    public static int $callbackInvocations = 0;
+}
+
+TestCountingSchema::schema(function (Table $table) {
+    TestCountingSchema::$callbackInvocations++;
+    $table->id();
+    $table->json('payload')->nullable();
+});
+
 
 class ModelTest extends \WP_UnitTestCase
 {
@@ -119,6 +178,10 @@ class ModelTest extends \WP_UnitTestCase
 
         Campaign::migrate(true);
         CampaignEntry::migrate(true);
+        TestModelWithJson::migrate(true);
+        TestModelWithJsonStringProp::migrate(true);
+        TestModelNoJson::migrate(true);
+        TestCountingSchema::migrate(true);
     }
 
     public function tear_down(): void
@@ -129,6 +192,10 @@ class ModelTest extends \WP_UnitTestCase
         $wpdb->query("DROP TABLE IF EXISTS {$prefix}campaign_meta");
         $wpdb->query("DROP TABLE IF EXISTS {$prefix}campaign_entries");
         $wpdb->query("DROP TABLE IF EXISTS {$prefix}campaigns");
+        $wpdb->query("DROP TABLE IF EXISTS {$prefix}test_models_with_json");
+        $wpdb->query("DROP TABLE IF EXISTS {$prefix}test_models_str_payload");
+        $wpdb->query("DROP TABLE IF EXISTS {$prefix}test_models_no_json");
+        $wpdb->query("DROP TABLE IF EXISTS {$prefix}test_counting_schemas");
 
         parent::tear_down();
     }
@@ -672,5 +739,103 @@ class ModelTest extends \WP_UnitTestCase
             "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{$prefix}campaigns'",
         );
         $this->assertEquals(1, (int) $exists);
+    }
+
+    public function test_array_roundtrips_through_json_column(): void
+    {
+        $model = TestModelWithJson::make();
+        $model->payload = ['nested' => ['a' => 1, 'b' => 'two'], 'list' => [10, 20, 30]];
+        $model->save();
+
+        $reloaded = TestModelWithJson::query()->find('id', $model->id);
+
+        $this->assertIsArray($reloaded->payload);
+        // MySQL JSON sorts object keys on storage — compare with == (assertEquals)
+        // so associative-array key order doesn't matter.
+        $this->assertEquals(['nested' => ['a' => 1, 'b' => 'two'], 'list' => [10, 20, 30]], $reloaded->payload);
+    }
+
+    public function test_null_stays_null_in_both_directions(): void
+    {
+        $model = TestModelWithJson::make();
+        $model->payload = null;
+        $model->save();
+
+        $reloaded = TestModelWithJson::query()->find('id', $model->id);
+
+        $this->assertNull($reloaded->payload);
+    }
+
+    public function test_empty_array_roundtrips(): void
+    {
+        $model = TestModelWithJson::make();
+        $model->payload = [];
+        $model->save();
+
+        $reloaded = TestModelWithJson::query()->find('id', $model->id);
+
+        $this->assertSame([], $reloaded->payload);
+    }
+
+    public function test_unicode_in_json_payload_not_escaped(): void
+    {
+        $model = TestModelWithJson::make();
+        $model->payload = ['name' => 'Sarah Müller', 'note' => '€10 = 5 meals 🍽'];
+        $model->save();
+
+        $reloaded = TestModelWithJson::query()->find('id', $model->id);
+
+        $this->assertSame('Sarah Müller', $reloaded->payload['name']);
+        $this->assertSame('€10 = 5 meals 🍽', $reloaded->payload['note']);
+    }
+
+    public function test_user_supplied_json_string_passes_through(): void
+    {
+        global $wpdb;
+        $prefix = $wpdb->prefix;
+
+        $model = TestModelWithJsonStringProp::make();
+        $model->payload = '{"already":"encoded"}';
+        $model->save();
+
+        $raw = $wpdb->get_var($wpdb->prepare(
+            "SELECT payload FROM {$prefix}test_models_str_payload WHERE id = %d",
+            $model->id,
+        ));
+
+        // MySQL canonicalizes JSON on store (whitespace/ordering may differ),
+        // so compare semantically. Double-encoding would have produced a string
+        // value, not an object.
+        $this->assertSame(['already' => 'encoded'], json_decode($raw, true));
+    }
+
+    public function test_model_without_json_columns_unaffected(): void
+    {
+        $model = TestModelNoJson::make();
+        $model->name = 'Hello';
+        $model->save();
+
+        $reloaded = TestModelNoJson::query()->find('id', $model->id);
+
+        $this->assertSame('Hello', $reloaded->name);
+    }
+
+    public function test_column_meta_cache_runs_schema_once_per_class(): void
+    {
+        $before = TestCountingSchema::$callbackInvocations;
+
+        $m = TestCountingSchema::make();
+        $m->payload = ['x' => 1];
+        $m->save();
+
+        TestCountingSchema::query()->find('id', $m->id);
+        TestCountingSchema::query()->find('id', $m->id);
+
+        $delta = TestCountingSchema::$callbackInvocations - $before;
+
+        // At most 1 invocation across save + 2 finds: columnMeta() warms its
+        // cache on the first call and reuses it thereafter. After the cache
+        // is warm in a subsequent test run, delta may be 0.
+        $this->assertLessThanOrEqual(1, $delta);
     }
 }

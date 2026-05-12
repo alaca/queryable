@@ -306,4 +306,22 @@ class TableTest extends TestCase
         $this->assertStringContainsString('KEY idx_paid_at (paid_at)', $sql);
         $this->assertStringContainsString('KEY idx_status_paid_at (status,paid_at)', $sql);
     }
+
+    public function test_getColumns_exposes_column_collection(): void
+    {
+        $t = new Table();
+        $t->id();
+        $t->string('name', 100);
+        $t->json('payload')->nullable();
+
+        $cols = $t->getColumns();
+
+        $this->assertCount(3, $cols);
+        $names = array_map(fn ($c) => $c->getDefinition()['name'], $cols);
+        $this->assertSame(['id', 'name', 'payload'], $names);
+
+        $payloadDef = $cols[2]->getDefinition();
+        $this->assertSame('JSON', $payloadDef['type']);
+        $this->assertTrue($payloadDef['nullable']);
+    }
 }

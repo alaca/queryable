@@ -181,6 +181,12 @@ class Table
         return $this->relations;
     }
 
+    /** @return array<Column> */
+    public function getColumns(): array
+    {
+        return $this->columns;
+    }
+
     public function index(string|array $columns, ?string $name = null): static
     {
         $cols = is_array($columns) ? $columns : [$columns];

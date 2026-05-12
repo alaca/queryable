@@ -709,6 +709,41 @@ Campaign::migrate(true);
 | `$table->json('settings')` | `JSON NOT NULL` |
 | `$table->enum('status', ['a', 'b'])` | `ENUM('a','b') NOT NULL` |
 
+### JSON Columns
+
+Models with `array` properties on `json()` columns roundtrip transparently. Arrays are JSON-encoded on save and decoded on read.
+
+```php
+class Donation extends Model
+{
+    protected string $table = 'donations';
+
+    public int $id;
+    public ?array $gateway_metadata = null;
+    public ?array $source_attribution = null;
+}
+
+Donation::schema(function (Table $t) {
+    $t->id();
+    $t->json('gateway_metadata')->nullable();
+    $t->json('source_attribution')->nullable();
+});
+
+$d = Donation::make();
+$d->gateway_metadata = ['stripe' => 'pi_123', 'fee' => 25];
+$d->save();
+
+$reloaded = Donation::query()->find('id', $d->id);
+$reloaded->gateway_metadata; // ['stripe' => 'pi_123', 'fee' => 25]
+```
+
+Notes:
+
+- `null` stays `null` in both directions.
+- If the property type is `?string`, the user supplied string is written verbatim.
+- Encoding uses `JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES` so multibyte characters and URLs stay readable in the DB.
+- Column metadata is derived once per class per request from the registered `schema()` callback and cached.
+
 ### Column Modifiers
 
 ```php
