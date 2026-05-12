@@ -10,6 +10,8 @@ class Table
     private array $columns = [];
     private array $metaConfig = [];
     private array $relations = [];
+    private array $indexes = [];
+    private array $compositeUniques = [];
     private string $charset;
     private string $collate;
 
@@ -179,6 +181,38 @@ class Table
         return $this->relations;
     }
 
+    public function index(string|array $columns, ?string $name = null): static
+    {
+        $cols = is_array($columns) ? $columns : [$columns];
+        $this->indexes[] = ['cols' => $cols, 'name' => $name];
+
+        return $this;
+    }
+
+    public function unique(string|array $columns, ?string $name = null): static
+    {
+        $cols = is_array($columns) ? $columns : [$columns];
+        $this->compositeUniques[] = ['cols' => $cols, 'name' => $name];
+
+        return $this;
+    }
+
+    private function generateIndexName(string $prefix, array $columns): string
+    {
+        $base = $prefix . '_' . implode('_', array_map(
+            fn ($c) => preg_replace('/[^a-z0-9_]/', '', strtolower($c)),
+            $columns
+        ));
+
+        if (strlen($base) <= 64) {
+            return $base;
+        }
+
+        $suffix = substr(hash('crc32b', implode('|', $columns)), 0, 6);
+
+        return substr($base, 0, 64 - 7) . '_' . $suffix;
+    }
+
     public function compile(string $tableName): string
     {
         $defs = [];
@@ -229,6 +263,26 @@ class Table
                 }
                 $constraints[] = $fk;
             }
+        }
+
+        foreach ($this->columns as $col) {
+            $def = $col->getDefinition();
+            if (!empty($def['index'])) {
+                $name = $def['indexName'] ?? $this->generateIndexName('idx', [$def['name']]);
+                $constraints[] = "KEY {$name} ({$def['name']})";
+            }
+        }
+
+        foreach ($this->indexes as $idx) {
+            $name = $idx['name'] ?? $this->generateIndexName('idx', $idx['cols']);
+            $colsList = implode(',', $idx['cols']);
+            $constraints[] = "KEY {$name} ({$colsList})";
+        }
+
+        foreach ($this->compositeUniques as $idx) {
+            $name = $idx['name'] ?? $this->generateIndexName('uk', $idx['cols']);
+            $colsList = implode(',', $idx['cols']);
+            $constraints[] = "UNIQUE KEY {$name} ({$colsList})";
         }
 
         $all = array_merge($defs, $constraints);

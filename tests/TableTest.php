@@ -194,4 +194,116 @@ class TableTest extends TestCase
 
         $this->assertStringContainsString('DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci', $sql);
     }
+
+    public function test_column_level_index_with_default_name(): void
+    {
+        $t = new Table();
+        $t->id();
+        $t->string('country', 2)->index();
+        $sql = $t->compile('test_table');
+        $this->assertStringContainsString('KEY idx_country (country)', $sql);
+    }
+
+    public function test_column_level_index_with_explicit_name(): void
+    {
+        $t = new Table();
+        $t->id();
+        $t->string('email_hash', 64)->index('uk_lookup');
+        $sql = $t->compile('test_table');
+        $this->assertStringContainsString('KEY uk_lookup (email_hash)', $sql);
+    }
+
+    public function test_table_level_single_index(): void
+    {
+        $t = new Table();
+        $t->id();
+        $t->string('status', 20);
+        $t->index('status');
+        $sql = $t->compile('test_table');
+        $this->assertStringContainsString('KEY idx_status (status)', $sql);
+    }
+
+    public function test_table_level_composite_index(): void
+    {
+        $t = new Table();
+        $t->id();
+        $t->string('status', 20);
+        $t->datetime('paid_at');
+        $t->index(['status', 'paid_at']);
+        $sql = $t->compile('test_table');
+        $this->assertStringContainsString('KEY idx_status_paid_at (status,paid_at)', $sql);
+    }
+
+    public function test_table_level_composite_index_with_name(): void
+    {
+        $t = new Table();
+        $t->id();
+        $t->string('status', 20);
+        $t->datetime('paid_at');
+        $t->index(['status', 'paid_at'], 'idx_pay_status');
+        $sql = $t->compile('test_table');
+        $this->assertStringContainsString('KEY idx_pay_status (status,paid_at)', $sql);
+    }
+
+    public function test_composite_unique_default_name(): void
+    {
+        $t = new Table();
+        $t->id();
+        $t->string('gateway', 32);
+        $t->string('external_id', 128);
+        $t->unique(['gateway', 'external_id']);
+        $sql = $t->compile('test_table');
+        $this->assertStringContainsString('UNIQUE KEY uk_gateway_external_id (gateway,external_id)', $sql);
+    }
+
+    public function test_composite_unique_with_name(): void
+    {
+        $t = new Table();
+        $t->id();
+        $t->string('gateway', 32);
+        $t->string('external_id', 128);
+        $t->unique(['gateway', 'external_id'], 'uk_gw_ext');
+        $sql = $t->compile('test_table');
+        $this->assertStringContainsString('UNIQUE KEY uk_gw_ext (gateway,external_id)', $sql);
+    }
+
+    public function test_column_level_unique_still_works_as_constraint(): void
+    {
+        $t = new Table();
+        $t->id();
+        $t->string('slug', 200)->unique();
+        $sql = $t->compile('test_table');
+        $this->assertStringContainsString('slug VARCHAR(200) NOT NULL UNIQUE', $sql);
+        $this->assertStringNotContainsString('UNIQUE KEY', $sql);
+    }
+
+    public function test_index_name_truncation_for_very_long_columns(): void
+    {
+        $t = new Table();
+        $t->id();
+        $t->string('some_extremely_long_column_name_that_exceeds_limits_a', 50);
+        $t->string('some_extremely_long_column_name_that_exceeds_limits_b', 50);
+        $t->index([
+            'some_extremely_long_column_name_that_exceeds_limits_a',
+            'some_extremely_long_column_name_that_exceeds_limits_b',
+        ]);
+        $sql = $t->compile('test_table');
+        preg_match('/KEY (\w+) \(/', $sql, $m);
+        $this->assertNotEmpty($m[1]);
+        $this->assertLessThanOrEqual(64, strlen($m[1]));
+    }
+
+    public function test_multiple_indexes_on_same_table(): void
+    {
+        $t = new Table();
+        $t->id();
+        $t->string('country', 2)->nullable()->index();
+        $t->datetime('paid_at')->index();
+        $t->string('status', 20);
+        $t->index(['status', 'paid_at']);
+        $sql = $t->compile('test_table');
+        $this->assertStringContainsString('KEY idx_country (country)', $sql);
+        $this->assertStringContainsString('KEY idx_paid_at (paid_at)', $sql);
+        $this->assertStringContainsString('KEY idx_status_paid_at (status,paid_at)', $sql);
+    }
 }

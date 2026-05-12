@@ -23,6 +23,8 @@ class Column
             'unsigned' => false,
             'references' => null,
             'onDelete' => null,
+            'index' => false,
+            'indexName' => null,
         ];
     }
 
@@ -72,6 +74,14 @@ class Column
     public function onDelete(string $action): static
     {
         $this->definition['onDelete'] = $action;
+
+        return $this;
+    }
+
+    public function index(?string $name = null): static
+    {
+        $this->definition['index'] = true;
+        $this->definition['indexName'] = $name;
 
         return $this;
     }
