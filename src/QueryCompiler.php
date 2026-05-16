@@ -340,10 +340,14 @@ class QueryCompiler
                 $this->compileUpdateTable(),
                 $this->compileSet(),
                 $this->compileWhere(),
+                $this->compileOrderBy(),
+                $this->compileLimit(),
             ],
             'DELETE' => [
                 $this->compileDeleteFrom(),
                 $this->compileWhere(),
+                $this->compileOrderBy(),
+                $this->compileLimit(),
             ],
             'TRUNCATE' => [
                 $this->compileTruncate(),

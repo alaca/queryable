@@ -116,4 +116,48 @@ class MutationTest extends QueryBuilderTestCase
             $qb->toSQL(),
         );
     }
+
+    public function testUpdateWithLimit(): void
+    {
+        $qb = DB::table('users')->where('active', 0)->limit(100);
+        $qb->update(['archived' => 1]);
+
+        $this->assertEquals(
+            'UPDATE users SET archived = 1 WHERE active = 0 LIMIT 100',
+            $qb->toSQL(),
+        );
+    }
+
+    public function testUpdateWithOrderByAndLimit(): void
+    {
+        $qb = DB::table('users')->where('active', 0)->orderBy('id')->limit(100);
+        $qb->update(['archived' => 1]);
+
+        $this->assertEquals(
+            'UPDATE users SET archived = 1 WHERE active = 0 ORDER BY id ASC LIMIT 100',
+            $qb->toSQL(),
+        );
+    }
+
+    public function testDeleteWithLimit(): void
+    {
+        $qb = DB::table('audit_log')->where('created_at', '2020-01-01', '<')->limit(1000);
+        $qb->delete();
+
+        $this->assertEquals(
+            "DELETE FROM audit_log WHERE created_at < '2020-01-01' LIMIT 1000",
+            $qb->toSQL(),
+        );
+    }
+
+    public function testDeleteWithOrderByAndLimit(): void
+    {
+        $qb = DB::table('audit_log')->where('created_at', '2020-01-01', '<')->orderBy('id')->limit(1000);
+        $qb->delete();
+
+        $this->assertEquals(
+            "DELETE FROM audit_log WHERE created_at < '2020-01-01' ORDER BY id ASC LIMIT 1000",
+            $qb->toSQL(),
+        );
+    }
 }
