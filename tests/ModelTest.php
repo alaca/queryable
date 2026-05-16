@@ -2,6 +2,7 @@
 
 namespace Queryable\Tests;
 
+use Queryable\DB;
 use Queryable\Model;
 use Queryable\Schema\Table;
 
@@ -837,5 +838,111 @@ class ModelTest extends \WP_UnitTestCase
         // cache on the first call and reuses it thereafter. After the cache
         // is warm in a subsequent test run, delta may be 0.
         $this->assertLessThanOrEqual(1, $delta);
+    }
+
+    private function captureTxnQueries(): object
+    {
+        $holder = new \stdClass();
+        $holder->queries = [];
+        $holder->capture = function ($q) use ($holder) {
+            if (preg_match('/^\s*(START TRANSACTION|COMMIT|ROLLBACK)\b/i', $q)) {
+                $holder->queries[] = strtoupper(trim($q));
+            }
+            return $q;
+        };
+        add_filter('query', $holder->capture);
+
+        return $holder;
+    }
+
+    public function test_nested_transactions_only_begin_once(): void
+    {
+        $cap = $this->captureTxnQueries();
+
+        try {
+            DB::transaction(function () {
+                DB::transaction(function () {
+                    // inner work — no DB writes needed; we're testing control flow
+                });
+                // outer work
+            });
+        } finally {
+            remove_filter('query', $cap->capture);
+        }
+
+        $this->assertSame(['START TRANSACTION', 'COMMIT'], $cap->queries);
+    }
+
+    public function test_inner_throw_rolls_back_outer(): void
+    {
+        $cap = $this->captureTxnQueries();
+
+        $caught = false;
+        try {
+            DB::transaction(function () {
+                DB::transaction(function () {
+                    throw new \RuntimeException('boom');
+                });
+            });
+        } catch (\RuntimeException) {
+            $caught = true;
+        } finally {
+            remove_filter('query', $cap->capture);
+        }
+
+        $this->assertTrue($caught);
+        $this->assertSame(['START TRANSACTION', 'ROLLBACK'], $cap->queries);
+    }
+
+    public function test_model_transaction_shares_depth_with_db_transaction(): void
+    {
+        $cap = $this->captureTxnQueries();
+
+        try {
+            DB::transaction(function () {
+                Campaign::transaction(function () {
+                    // Model::transaction nested inside DB::transaction must share
+                    // the same depth counter.
+                });
+            });
+        } finally {
+            remove_filter('query', $cap->capture);
+        }
+
+        $this->assertSame(['START TRANSACTION', 'COMMIT'], $cap->queries);
+    }
+
+    public function test_single_transaction_commits(): void
+    {
+        $cap = $this->captureTxnQueries();
+
+        try {
+            DB::transaction(function () {
+                // baseline: non-nested case still works
+            });
+        } finally {
+            remove_filter('query', $cap->capture);
+        }
+
+        $this->assertSame(['START TRANSACTION', 'COMMIT'], $cap->queries);
+    }
+
+    public function test_single_transaction_rolls_back_on_throw(): void
+    {
+        $cap = $this->captureTxnQueries();
+
+        $caught = false;
+        try {
+            DB::transaction(function () {
+                throw new \RuntimeException('boom');
+            });
+        } catch (\RuntimeException) {
+            $caught = true;
+        } finally {
+            remove_filter('query', $cap->capture);
+        }
+
+        $this->assertTrue($caught);
+        $this->assertSame(['START TRANSACTION', 'ROLLBACK'], $cap->queries);
     }
 }

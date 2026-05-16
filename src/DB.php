@@ -8,6 +8,7 @@ use Throwable;
 class DB
 {
     private static array $schema = [];
+    private static int $transactionDepth = 0;
 
     public static function init(array $options = []): void
     {
@@ -67,20 +68,39 @@ class DB
         );
     }
 
+    /**
+     * Run $callback inside a database transaction.
+     *
+     * Nested calls reuse the outermost transaction instead of
+     * issuing another START TRANSACTION (which MySQL implicit-commits the
+     * outer, silently dropping atomicity). Only the outermost call runs
+     * START TRANSACTION / COMMIT / ROLLBACK.
+     */
     public static function transaction(callable $callback): mixed
     {
         global $wpdb;
-        $wpdb->query('START TRANSACTION');
+
+        if (self::$transactionDepth === 0) {
+            $wpdb->query('START TRANSACTION');
+        }
+        self::$transactionDepth++;
 
         try {
             $result = $callback();
-            $wpdb->query('COMMIT');
-
-            return $result;
         } catch (Throwable $e) {
-            $wpdb->query('ROLLBACK');
+            self::$transactionDepth--;
+            if (self::$transactionDepth === 0) {
+                $wpdb->query('ROLLBACK');
+            }
             throw $e;
         }
+
+        self::$transactionDepth--;
+        if (self::$transactionDepth === 0) {
+            $wpdb->query('COMMIT');
+        }
+
+        return $result;
     }
 
     public static function getPrefix(): string

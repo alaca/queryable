@@ -8,7 +8,6 @@ use ReflectionClass;
 use ReflectionNamedType;
 use ReflectionProperty;
 use RuntimeException;
-use Throwable;
 
 abstract class Model
 {
@@ -280,18 +279,7 @@ abstract class Model
 
     public static function transaction(callable $callback): mixed
     {
-        global $wpdb;
-        $wpdb->query('START TRANSACTION');
-
-        try {
-            $result = $callback();
-            $wpdb->query('COMMIT');
-
-            return $result;
-        } catch (Throwable $up) {
-            $wpdb->query('ROLLBACK');
-            throw $up; // yep
-        }
+        return DB::transaction($callback);
     }
 
     public static function getVersion(): string
