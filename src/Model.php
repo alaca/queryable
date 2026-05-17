@@ -115,7 +115,7 @@ abstract class Model
         return $instance;
     }
 
-    /** @return array{json: array<string>} */
+    /** @return array{json: array<string>, nullable: array<string>} */
     private static function columnMeta(): array
     {
         $class = static::class;
@@ -127,21 +127,25 @@ abstract class Model
         $callback = static::$schemas[$class] ?? null;
 
         if (!$callback) {
-            return self::$columnMetaCache[$class] = ['json' => []];
+            return self::$columnMetaCache[$class] = ['json' => [], 'nullable' => []];
         }
 
         $t = new Table();
         $callback($t);
 
         $jsonCols = [];
+        $nullable = [];
         foreach ($t->getColumns() as $col) {
             $def = $col->getDefinition();
             if (stripos((string) $def['type'], 'JSON') !== false) {
                 $jsonCols[] = $def['name'];
             }
+            if (!empty($def['nullable'])) {
+                $nullable[] = $def['name'];
+            }
         }
 
-        return self::$columnMetaCache[$class] = ['json' => $jsonCols];
+        return self::$columnMetaCache[$class] = ['json' => $jsonCols, 'nullable' => $nullable];
     }
 
     private static function castValue(mixed $value, ReflectionProperty $prop): mixed
@@ -190,12 +194,26 @@ abstract class Model
     {
         $this->onBeforeSave();
 
-        // filter out unset properties
-        $data = array_filter($this->toArray(), fn ($v) => $v !== null);
         $pk = $this->primaryKey;
+        $raw = $this->toArray();
+        $isUpdate = !empty($raw[$pk]);
 
-        $jsonCols = static::columnMeta()['json'];
-        foreach ($jsonCols as $col) {
+        $colMeta = static::columnMeta();
+        $nullable = $colMeta['nullable'];
+
+        // Drop null values, except an explicit null assigned to a nullable
+        $data = [];
+        foreach ($raw as $col => $value) {
+            if ($value === null) {
+                if ($isUpdate && in_array($col, $nullable, true)) {
+                    $data[$col] = null;
+                }
+                continue;
+            }
+            $data[$col] = $value;
+        }
+
+        foreach ($colMeta['json'] as $col) {
             if (isset($data[$col]) && is_array($data[$col])) {
                 $data[$col] = json_encode($data[$col], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             }
@@ -209,8 +227,8 @@ abstract class Model
             $builder->withMeta(...array_keys($meta['aliases']));
         }
 
-        if (!empty($data[$pk])) {
-            $id = $data[$pk];
+        if ($isUpdate) {
+            $id = $raw[$pk];
             unset($data[$pk]);
 
             $result = $builder->where($pk, $id)->update($data);

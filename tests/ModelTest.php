@@ -164,6 +164,25 @@ TestCountingSchema::schema(function (Table $table) {
     $table->json('payload')->nullable();
 });
 
+class TestNullablePolicy extends Model
+{
+    protected string $table = 'test_nullable_policy';
+
+    public int $id;
+    public string $name = '';
+    public ?string $note = null;       // schema: nullable
+    public ?int $priority = null;      // schema: NOT NULL DEFAULT 5
+    public ?string $status = 'active'; // schema: NOT NULL DEFAULT 'active'
+}
+
+TestNullablePolicy::schema(function (Table $table) {
+    $table->id();
+    $table->string('name', 100)->default('');
+    $table->string('note', 255)->nullable();
+    $table->integer('priority')->default(5);
+    $table->string('status', 20)->default('active');
+});
+
 
 class ModelTest extends \WP_UnitTestCase
 {
@@ -183,6 +202,7 @@ class ModelTest extends \WP_UnitTestCase
         TestModelWithJsonStringProp::migrate(true);
         TestModelNoJson::migrate(true);
         TestCountingSchema::migrate(true);
+        TestNullablePolicy::migrate(true);
     }
 
     public function tear_down(): void
@@ -197,6 +217,7 @@ class ModelTest extends \WP_UnitTestCase
         $wpdb->query("DROP TABLE IF EXISTS {$prefix}test_models_str_payload");
         $wpdb->query("DROP TABLE IF EXISTS {$prefix}test_models_no_json");
         $wpdb->query("DROP TABLE IF EXISTS {$prefix}test_counting_schemas");
+        $wpdb->query("DROP TABLE IF EXISTS {$prefix}test_nullable_policy");
 
         parent::tear_down();
     }
@@ -848,6 +869,7 @@ class ModelTest extends \WP_UnitTestCase
             if (preg_match('/^\s*(START TRANSACTION|COMMIT|ROLLBACK)\b/i', $q)) {
                 $holder->queries[] = strtoupper(trim($q));
             }
+
             return $q;
         };
         add_filter('query', $holder->capture);
@@ -944,5 +966,68 @@ class ModelTest extends \WP_UnitTestCase
 
         $this->assertTrue($caught);
         $this->assertSame(['START TRANSACTION', 'ROLLBACK'], $cap->queries);
+    }
+
+    public function test_null_on_nullable_column_persists_on_update(): void
+    {
+        $m = TestNullablePolicy::make();
+        $m->name = 'r1';
+        $m->note = 'has-note';
+        $m->save();
+
+        $loaded = TestNullablePolicy::query()->find('id', $m->id);
+        $this->assertSame('has-note', $loaded->note);
+
+        $loaded->note = null;
+        $loaded->save();
+
+        $reread = TestNullablePolicy::query()->find('id', $loaded->id);
+        $this->assertNull($reread->note);
+    }
+
+    public function test_insert_omits_nulls_so_db_defaults_apply(): void
+    {
+        $m = TestNullablePolicy::make();
+        $m->name = 'r2';
+        // priority stays PHP-null; DB column is NOT NULL DEFAULT 5.
+        $m->save();
+
+        $loaded = TestNullablePolicy::query()->find('id', $m->id);
+
+        $this->assertSame(5, $loaded->priority);   // DB default, not NULL
+        $this->assertSame('active', $loaded->status);
+        $this->assertNull($loaded->note);          // nullable, no default
+        $this->assertNotEmpty($loaded->id);        // auto-increment unaffected
+    }
+
+    public function test_null_on_non_nullable_column_omitted_on_update(): void
+    {
+        $m = TestNullablePolicy::make();
+        $m->name = 'r3';
+        $m->status = 'special';
+        $m->save();
+
+        $loaded = TestNullablePolicy::query()->find('id', $m->id);
+        $this->assertSame('special', $loaded->status);
+
+        $loaded->status = null; // non-nullable in schema
+        $loaded->note = null;   // nullable in schema
+        $loaded->save();
+
+        $reread = TestNullablePolicy::query()->find('id', $loaded->id);
+        $this->assertSame('special', $reread->status); // R3: untouched
+        $this->assertNull($reread->note);              // R1: cleared
+    }
+
+    public function test_columnMeta_collects_nullable_columns(): void
+    {
+        $colMeta = \Closure::bind(
+            fn () => TestNullablePolicy::columnMeta(),
+            null,
+            Model::class,
+        )();
+
+        $this->assertSame(['note'], $colMeta['nullable']);
+        $this->assertSame([], $colMeta['json']);
     }
 }
