@@ -56,6 +56,13 @@ class Column
         return $this;
     }
 
+    public function autoIncrement(): static
+    {
+        $this->definition['autoIncrement'] = true;
+
+        return $this;
+    }
+
     public function default(mixed $value): static
     {
         $this->definition['default'] = $value;

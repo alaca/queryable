@@ -24,8 +24,8 @@ class Table
 
     public function id(string $name = 'id'): Column
     {
-        $col = new Column($name, 'BIGINT UNSIGNED NOT NULL AUTO_INCREMENT');
-        $col->primary();
+        $col = new Column($name, 'BIGINT');
+        $col->unsigned()->autoIncrement()->primary();
         $this->columns[] = $col;
 
         return $col;
@@ -219,6 +219,35 @@ class Table
         return substr($base, 0, 64 - 7) . '_' . $suffix;
     }
 
+    /**
+     * Normalise a column type to the shape MySQL reports (and dbDelta expects):
+     * lowercase keyword + the default integer display width. Args (lengths,
+     * decimal scale, enum values) are preserved verbatim so quoted values keep
+     * their case.
+     */
+    private function canonicalType(string $type, bool $unsigned): string
+    {
+        $type = trim($type);
+        if (!preg_match('/^([A-Za-z]+)\s*(\(.*\))?$/s', $type, $m)) {
+            return strtolower($type);
+        }
+        $base = strtolower($m[1]);
+        $args = $m[2] ?? '';
+
+        if ($args === '') {
+            $widths = [
+                'bigint'    => '(20)',
+                'int'       => $unsigned ? '(10)' : '(11)',
+                'mediumint' => $unsigned ? '(8)'  : '(9)',
+                'smallint'  => $unsigned ? '(5)'  : '(6)',
+                'tinyint'   => $unsigned ? '(3)'  : '(4)',
+            ];
+            $args = $widths[$base] ?? '';
+        }
+
+        return $base . $args;
+    }
+
     public function compile(string $tableName): string
     {
         $defs = [];
@@ -226,20 +255,23 @@ class Table
 
         foreach ($this->columns as $col) {
             $def = $col->getDefinition();
-            $type = $def['type'];
 
-            $line = "{$def['name']} {$type}";
+            // dbDelta() compares the desired column SQL against MySQL's reported
+            // schema (lowercase, with integer display widths). Emit the same
+            // canonical shape so a re-run converges to a no-op instead of an
+            // endless ALTER ... CHANGE COLUMN.
+            $line = "{$def['name']} " . $this->canonicalType($def['type'], (bool) $def['unsigned']);
 
             if ($def['unsigned']) {
-                $line .= ' UNSIGNED';
+                $line .= ' unsigned';
             }
 
-            if (!$def['nullable'] && !str_contains($type, 'NOT NULL')) {
+            if (!$def['nullable']) {
                 $line .= ' NOT NULL';
             }
 
-            if (str_contains($type, 'AUTO_INCREMENT')) {
-                // Let PRIMARY KEY be added as a separate constraint for dbDelta compatibility
+            if ($def['autoIncrement']) {
+                $line .= ' AUTO_INCREMENT';
             } elseif ($def['hasDefault']) {
                 if ($def['default'] === null) {
                     $line .= ' DEFAULT NULL';
@@ -252,14 +284,18 @@ class Table
                 }
             }
 
-            if ($def['unique']) {
-                $line .= ' UNIQUE';
-            }
-
             $defs[] = $line;
 
             if ($def['primary']) {
-                $constraints[] = "PRIMARY KEY ({$def['name']})";
+                $constraints[] = "PRIMARY KEY  ({$def['name']})";
+            }
+
+            // Column-level unique() becomes a separate UNIQUE KEY line (like
+            // composite uniques); inline UNIQUE is invisible to dbDelta and
+            // re-adds the index every migrate ("Too many keys").
+            if ($def['unique']) {
+                $name = $this->generateIndexName('uk', [$def['name']]);
+                $constraints[] = "UNIQUE KEY {$name} ({$def['name']})";
             }
 
             if ($def['references']) {
@@ -313,11 +349,11 @@ class Table
         }
 
         return "CREATE TABLE {$metaTable} (\n"
-            . "meta_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,\n"
-            . "{$singularId} BIGINT UNSIGNED NOT NULL,\n"
-            . "meta_key VARCHAR(255) NOT NULL,\n"
-            . "meta_value LONGTEXT,\n"
-            . "PRIMARY KEY (meta_id),\n"
+            . "meta_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n"
+            . "{$singularId} bigint(20) unsigned NOT NULL,\n"
+            . "meta_key varchar(255) NOT NULL,\n"
+            . "meta_value longtext,\n"
+            . "PRIMARY KEY  (meta_id),\n"
             . "KEY {$singularId} ({$singularId}),\n"
             . "KEY meta_key (meta_key)\n"
             . ") DEFAULT CHARACTER SET {$this->charset} COLLATE {$this->collate}";

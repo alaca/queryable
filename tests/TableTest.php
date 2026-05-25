@@ -17,10 +17,11 @@ class TableTest extends TestCase
         $sql = $table->compile('wp_products');
 
         $this->assertStringContainsString('CREATE TABLE wp_products', $sql);
-        $this->assertStringContainsString('id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT', $sql);
-        $this->assertStringContainsString('PRIMARY KEY (id)', $sql);
-        $this->assertStringContainsString('name VARCHAR(255) NOT NULL', $sql);
-        $this->assertStringContainsString('email VARCHAR(255) NOT NULL UNIQUE', $sql);
+        $this->assertStringContainsString('id bigint(20) unsigned NOT NULL AUTO_INCREMENT', $sql);
+        $this->assertStringContainsString('PRIMARY KEY  (id)', $sql);
+        $this->assertStringContainsString('name varchar(255) NOT NULL', $sql);
+        $this->assertStringContainsString('email varchar(255) NOT NULL', $sql);
+        $this->assertStringContainsString('UNIQUE KEY uk_email (email)', $sql);
     }
 
     public function testColumnTypes(): void
@@ -42,18 +43,18 @@ class TableTest extends TestCase
 
         $sql = $table->compile('wp_items');
 
-        $this->assertStringContainsString('description TEXT NOT NULL', $sql);
-        $this->assertStringContainsString('content LONGTEXT NOT NULL', $sql);
-        $this->assertStringContainsString('quantity INT NOT NULL', $sql);
-        $this->assertStringContainsString('views BIGINT NOT NULL', $sql);
-        $this->assertStringContainsString('priority TINYINT NOT NULL', $sql);
-        $this->assertStringContainsString('rating FLOAT NOT NULL', $sql);
-        $this->assertStringContainsString('price DECIMAL(8,2) NOT NULL', $sql);
-        $this->assertStringContainsString('active TINYINT(1) NOT NULL', $sql);
-        $this->assertStringContainsString('birth_date DATE NOT NULL', $sql);
-        $this->assertStringContainsString('published_at DATETIME NOT NULL', $sql);
-        $this->assertStringContainsString('settings JSON NOT NULL', $sql);
-        $this->assertStringContainsString("status ENUM('draft','published','archived') NOT NULL", $sql);
+        $this->assertStringContainsString('description text NOT NULL', $sql);
+        $this->assertStringContainsString('content longtext NOT NULL', $sql);
+        $this->assertStringContainsString('quantity int(11) NOT NULL', $sql);
+        $this->assertStringContainsString('views bigint(20) NOT NULL', $sql);
+        $this->assertStringContainsString('priority tinyint(4) NOT NULL', $sql);
+        $this->assertStringContainsString('rating float NOT NULL', $sql);
+        $this->assertStringContainsString('price decimal(8,2) NOT NULL', $sql);
+        $this->assertStringContainsString('active tinyint(1) NOT NULL', $sql);
+        $this->assertStringContainsString('birth_date date NOT NULL', $sql);
+        $this->assertStringContainsString('published_at datetime NOT NULL', $sql);
+        $this->assertStringContainsString('settings json NOT NULL', $sql);
+        $this->assertStringContainsString("status enum('draft','published','archived') NOT NULL", $sql);
     }
 
     public function testNullableAndDefault(): void
@@ -67,11 +68,11 @@ class TableTest extends TestCase
 
         $sql = $table->compile('wp_products');
 
-        $this->assertStringContainsString('stock INT NOT NULL DEFAULT 0', $sql);
-        $this->assertStringContainsString("status VARCHAR(255) NOT NULL DEFAULT 'draft'", $sql);
-        $this->assertStringContainsString('deleted_at DATETIME', $sql);
-        $this->assertStringNotContainsString('deleted_at DATETIME NOT NULL', $sql);
-        $this->assertStringContainsString('featured TINYINT(1) NOT NULL DEFAULT 0', $sql);
+        $this->assertStringContainsString('stock int(11) NOT NULL DEFAULT 0', $sql);
+        $this->assertStringContainsString("status varchar(255) NOT NULL DEFAULT 'draft'", $sql);
+        $this->assertStringContainsString('deleted_at datetime', $sql);
+        $this->assertStringNotContainsString('deleted_at datetime NOT NULL', $sql);
+        $this->assertStringContainsString('featured tinyint(1) NOT NULL DEFAULT 0', $sql);
     }
 
     public function testDatetimeColumns(): void
@@ -83,8 +84,8 @@ class TableTest extends TestCase
 
         $sql = $table->compile('wp_posts');
 
-        $this->assertStringContainsString('created_at DATETIME', $sql);
-        $this->assertStringContainsString('updated_at DATETIME', $sql);
+        $this->assertStringContainsString('created_at datetime', $sql);
+        $this->assertStringContainsString('updated_at datetime', $sql);
     }
 
     public function testForeignKey(): void
@@ -95,7 +96,7 @@ class TableTest extends TestCase
 
         $sql = $table->compile('wp_orders');
 
-        $this->assertStringContainsString('user_id BIGINT UNSIGNED NOT NULL', $sql);
+        $this->assertStringContainsString('user_id bigint(20) unsigned NOT NULL', $sql);
         $this->assertStringContainsString('FOREIGN KEY (user_id) REFERENCES wp_users(ID) ON DELETE CASCADE', $sql);
     }
 
@@ -107,7 +108,7 @@ class TableTest extends TestCase
 
         $sql = $table->compile('wp_items');
 
-        $this->assertStringContainsString('quantity INT UNSIGNED NOT NULL', $sql);
+        $this->assertStringContainsString('quantity int(10) unsigned NOT NULL', $sql);
     }
 
     public function testMetaTableDefault(): void
@@ -125,11 +126,11 @@ class TableTest extends TestCase
         $metaSql = $table->compileMetaTable('wp_products', 'wp_');
 
         $this->assertStringContainsString('CREATE TABLE wp_products_meta', $metaSql);
-        $this->assertStringContainsString('meta_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT', $metaSql);
-        $this->assertStringContainsString('PRIMARY KEY (meta_id)', $metaSql);
-        $this->assertStringContainsString('product_id BIGINT UNSIGNED NOT NULL', $metaSql);
-        $this->assertStringContainsString('meta_key VARCHAR(255) NOT NULL', $metaSql);
-        $this->assertStringContainsString('meta_value LONGTEXT', $metaSql);
+        $this->assertStringContainsString('meta_id bigint(20) unsigned NOT NULL AUTO_INCREMENT', $metaSql);
+        $this->assertStringContainsString('PRIMARY KEY  (meta_id)', $metaSql);
+        $this->assertStringContainsString('product_id bigint(20) unsigned NOT NULL', $metaSql);
+        $this->assertStringContainsString('meta_key varchar(255) NOT NULL', $metaSql);
+        $this->assertStringContainsString('meta_value longtext', $metaSql);
     }
 
     public function testMetaTableFromConfig(): void
@@ -145,7 +146,7 @@ class TableTest extends TestCase
         $metaSql = $table->compileMetaTable('wp_campaigns', 'wp_');
 
         $this->assertStringContainsString('CREATE TABLE wp_campaign_meta', $metaSql);
-        $this->assertStringContainsString('campaign_id BIGINT UNSIGNED NOT NULL', $metaSql);
+        $this->assertStringContainsString('campaign_id bigint(20) unsigned NOT NULL', $metaSql);
     }
 
     public function testNoMeta(): void
@@ -267,14 +268,17 @@ class TableTest extends TestCase
         $this->assertStringContainsString('UNIQUE KEY uk_gw_ext (gateway,external_id)', $sql);
     }
 
-    public function test_column_level_unique_still_works_as_constraint(): void
+    public function test_column_level_unique_compiles_to_a_separate_unique_key(): void
     {
         $t = new Table();
         $t->id();
         $t->string('slug', 200)->unique();
         $sql = $t->compile('test_table');
-        $this->assertStringContainsString('slug VARCHAR(200) NOT NULL UNIQUE', $sql);
-        $this->assertStringNotContainsString('UNIQUE KEY', $sql);
+        // Inline UNIQUE is invisible to dbDelta (re-adds the index every
+        // migrate); it must become a named UNIQUE KEY line like composite uniques.
+        $this->assertStringContainsString('slug varchar(200) NOT NULL', $sql);
+        $this->assertStringNotContainsString('NOT NULL UNIQUE', $sql);
+        $this->assertStringContainsString('UNIQUE KEY uk_slug (slug)', $sql);
     }
 
     public function test_index_name_truncation_for_very_long_columns(): void
