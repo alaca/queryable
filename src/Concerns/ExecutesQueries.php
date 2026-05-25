@@ -3,6 +3,7 @@
 namespace Queryable\Concerns;
 
 use Queryable\Clauses\RawSQL;
+use Queryable\QueryException;
 use Queryable\QueryResult;
 
 /**
@@ -22,15 +23,33 @@ trait ExecutesQueries
         }
 
         if (stripos(trim($sql), 'SELECT') === 0) {
-            return ['rows' => $wpdb->get_results($sql, ARRAY_A) ?: []];
+            $rows = $wpdb->get_results($sql, ARRAY_A);
+            $this->assertNoDbError($sql);
+
+            return ['rows' => $rows ?: []];
         }
 
         $wpdb->query($sql);
+        $this->assertNoDbError($sql);
 
         return new QueryResult(
             (int) $wpdb->rows_affected,
             (int) $wpdb->insert_id,
         );
+    }
+
+    /**
+     * $wpdb returns false (not an exception) when a query fails, so a failed
+     * write otherwise looks like success to the caller. Surface it as an
+     * exception so it can't pass silently.
+     */
+    private function assertNoDbError(string $sql): void
+    {
+        global $wpdb;
+
+        if (!empty($wpdb->last_error)) {
+            throw new QueryException($wpdb->last_error, $sql);
+        }
     }
 
     private function run(string $sql): QueryResult

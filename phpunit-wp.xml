@@ -4,6 +4,7 @@
         <testsuite name="WP Integration">
             <file>tests/ModelTest.php</file>
             <file>tests/SchemaConvergenceTest.php</file>
+            <file>tests/WriteErrorTest.php</file>
         </testsuite>
     </testsuites>
 </phpunit>
