@@ -8,8 +8,33 @@ use Queryable\QueryBuilder;
 
 trait HasWhere
 {
+    private const OPERATORS = [
+        '=', '!=', '<>', '<=>', '<', '<=', '>', '>=',
+        'LIKE', 'NOT LIKE', 'IN', 'NOT IN', 'BETWEEN', 'NOT BETWEEN',
+        'IS NULL', 'IS NOT NULL', 'EXISTS', 'NOT EXISTS',
+        'REGEXP', 'NOT REGEXP', 'RLIKE',
+    ];
+
+    /**
+     * Reject a bad operator instead of generating broken SQL. The signature is
+     * where($column, $value, $operator) - passing them Laravel-style as
+     * ($column, $operator, $value) used to put the value in the operator slot
+     * and silently produce SQL that matched nothing.
+     */
+    private function assertOperator(string $operator): void
+    {
+        if (!in_array(strtoupper(trim($operator)), self::OPERATORS, true)) {
+            throw new \InvalidArgumentException(sprintf(
+                'Unknown SQL operator "%s". where() takes ($column, $value, $operator) - did you pass the operator and value in the wrong order?',
+                $operator
+            ));
+        }
+    }
+
     private function setWhere(string|Closure $column, mixed $value, string $comparisonOperator, string $logicalOperator): static
     {
+        $this->assertOperator($comparisonOperator);
+
         if ($column instanceof Closure) {
             $builder = new QueryBuilder();
             $column($builder);
@@ -121,6 +146,27 @@ trait HasWhere
     public function orWhereIsNotNull(string $column): static
     {
         return $this->orWhere($column, null, 'IS NOT NULL');
+    }
+
+    // Aliases matching the widespread whereNull / whereNotNull naming.
+    public function whereNull(string $column): static
+    {
+        return $this->whereIsNull($column);
+    }
+
+    public function orWhereNull(string $column): static
+    {
+        return $this->orWhereIsNull($column);
+    }
+
+    public function whereNotNull(string $column): static
+    {
+        return $this->whereIsNotNull($column);
+    }
+
+    public function orWhereNotNull(string $column): static
+    {
+        return $this->orWhereIsNotNull($column);
     }
 
     private function setWhereExists(Closure $callback, string $type, string $logicalOperator): static

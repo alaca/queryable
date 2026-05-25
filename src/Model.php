@@ -2,6 +2,7 @@
 
 namespace Queryable;
 
+use ArrayAccess;
 use Closure;
 use Queryable\Schema\Table;
 use ReflectionClass;
@@ -9,7 +10,7 @@ use ReflectionNamedType;
 use ReflectionProperty;
 use RuntimeException;
 
-abstract class Model
+abstract class Model implements ArrayAccess
 {
     protected string $table;
     protected string $primaryKey = 'id';
@@ -21,7 +22,7 @@ abstract class Model
     /** @var array<class-string, array{json: array<string>}> */
     private static array $columnMetaCache = [];
 
-    private function __construct()
+    public function __construct()
     {
     }
 
@@ -188,6 +189,39 @@ abstract class Model
     public function __isset(string $name): bool
     {
         return array_key_exists($name, $this->extras);
+    }
+
+    /**
+     * ArrayAccess so a hydrated model can also be read with ['key'] like the
+     * assoc-array rows DB::table() returns. Mixing the two shapes used to be
+     * fatal ("Cannot use object of type X as array"); reads now work either way.
+     */
+    public function offsetExists(mixed $offset): bool
+    {
+        return isset($this->$offset) || array_key_exists($offset, $this->extras);
+    }
+
+    public function offsetGet(mixed $offset): mixed
+    {
+        if (isset($this->$offset)) {
+            return $this->$offset;
+        }
+
+        return $this->extras[$offset] ?? null;
+    }
+
+    public function offsetSet(mixed $offset, mixed $value): void
+    {
+        if (property_exists($this, (string) $offset)) {
+            $this->$offset = $value;
+        } else {
+            $this->extras[$offset] = $value;
+        }
+    }
+
+    public function offsetUnset(mixed $offset): void
+    {
+        unset($this->extras[$offset]);
     }
 
     public function save(): QueryResult
