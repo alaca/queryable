@@ -8,13 +8,6 @@ use Queryable\QueryBuilder;
 
 trait HasWhere
 {
-    private const OPERATORS = [
-        '=', '!=', '<>', '<=>', '<', '<=', '>', '>=',
-        'LIKE', 'NOT LIKE', 'IN', 'NOT IN', 'BETWEEN', 'NOT BETWEEN',
-        'IS NULL', 'IS NOT NULL', 'EXISTS', 'NOT EXISTS',
-        'REGEXP', 'NOT REGEXP', 'RLIKE',
-    ];
-
     /**
      * Reject a bad operator instead of generating broken SQL. The signature is
      * where($column, $value, $operator) - passing them Laravel-style as
@@ -23,7 +16,7 @@ trait HasWhere
      */
     private function assertOperator(string $operator): void
     {
-        if (!in_array(strtoupper(trim($operator)), self::OPERATORS, true)) {
+        if (!in_array(strtoupper(trim($operator)), Where::OPERATORS, true)) {
             throw new \InvalidArgumentException(sprintf(
                 'Unknown SQL operator "%s". where() takes ($column, $value, $operator) - did you pass the operator and value in the wrong order?',
                 $operator
