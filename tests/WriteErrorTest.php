@@ -46,4 +46,30 @@ class WriteErrorTest extends TestCase
         $rows = DB::table('users')->getAll();
         $this->assertIsArray($rows);
     }
+
+    public function test_failed_raw_write_throws(): void
+    {
+        global $wpdb;
+        if (! isset($wpdb)) {
+            $this->markTestSkipped('Needs the WP integration env ($wpdb).');
+        }
+
+        $this->expectException(QueryException::class);
+        DB::raw('INSERT INTO queryable_no_such_table_xyz (a) VALUES (1)');
+    }
+
+    /**
+     * The read path too: a broken raw SELECT returned an empty rows array,
+     * which the caller cannot tell from a table with nothing in it.
+     */
+    public function test_failed_raw_select_throws(): void
+    {
+        global $wpdb;
+        if (! isset($wpdb)) {
+            $this->markTestSkipped('Needs the WP integration env ($wpdb).');
+        }
+
+        $this->expectException(QueryException::class);
+        DB::raw('SELECT * FROM queryable_no_such_table_xyz');
+    }
 }

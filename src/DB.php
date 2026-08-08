@@ -57,15 +57,35 @@ class DB
         }
 
         if (stripos(trim($sql), 'SELECT') === 0) {
-            return ['rows' => $wpdb->get_results($sql, OBJECT) ?: []];
+            $rows = $wpdb->get_results($sql, OBJECT) ?: [];
+            self::assertNoDbError($sql);
+
+            return ['rows' => $rows];
         }
 
         $wpdb->query($sql);
+        self::assertNoDbError($sql);
 
         return new QueryResult(
             (int) $wpdb->rows_affected,
             (int) $wpdb->insert_id,
         );
+    }
+
+    /**
+     * The same guard the query builder applies, for the raw path.
+     *
+     * $wpdb answers a failed query with false rather than an exception, so
+     * without this a broken raw write reports success and a broken raw read
+     * is indistinguishable from a table with no matching rows.
+     */
+    private static function assertNoDbError(string $sql): void
+    {
+        global $wpdb;
+
+        if (!empty($wpdb->last_error)) {
+            throw new QueryException($wpdb->last_error, $sql);
+        }
     }
 
     /**
