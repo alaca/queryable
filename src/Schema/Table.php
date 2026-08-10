@@ -127,9 +127,21 @@ class Table
         return $col;
     }
 
+    /**
+     * Stored as LONGTEXT, flagged as JSON.
+     *
+     * MariaDB has no JSON type: JSON there is a parser alias for LONGTEXT, so a
+     * column declared json is reported back as longtext. dbDelta compares the
+     * emitted type against the reported one literally, sees longtext against
+     * json, and re-issues ALTER TABLE ... CHANGE COLUMN on every migration. That
+     * never converges, and each one rewrites the whole table.
+     *
+     * Emitting LONGTEXT is what both engines report back. The flag, not the type
+     * string, is what tells the model to encode and decode.
+     */
     public function json(string $name): Column
     {
-        $col = new Column($name, 'JSON');
+        $col = new Column($name, 'LONGTEXT', true);
         $this->columns[] = $col;
 
         return $col;

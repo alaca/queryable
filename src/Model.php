@@ -138,7 +138,9 @@ abstract class Model implements ArrayAccess
         $nullable = [];
         foreach ($t->getColumns() as $col) {
             $def = $col->getDefinition();
-            if (stripos((string) $def['type'], 'JSON') !== false) {
+            // The flag, not the type: a JSON column is stored as LONGTEXT so
+            // that dbDelta converges on MariaDB, which has no JSON type.
+            if (! empty($def['json'])) {
                 $jsonCols[] = $def['name'];
             }
             if (!empty($def['nullable'])) {

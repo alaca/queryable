@@ -53,7 +53,10 @@ class TableTest extends TestCase
         $this->assertStringContainsString('active tinyint(1) NOT NULL', $sql);
         $this->assertStringContainsString('birth_date date NOT NULL', $sql);
         $this->assertStringContainsString('published_at datetime NOT NULL', $sql);
-        $this->assertStringContainsString('settings json NOT NULL', $sql);
+        // Stored as longtext, not json: MariaDB has no JSON type and reports
+        // such a column back as longtext, so emitting json means dbDelta never
+        // agrees the table is already correct.
+        $this->assertStringContainsString('settings longtext NOT NULL', $sql);
         $this->assertStringContainsString("status enum('draft','published','archived') NOT NULL", $sql);
     }
 
@@ -325,7 +328,10 @@ class TableTest extends TestCase
         $this->assertSame(['id', 'name', 'payload'], $names);
 
         $payloadDef = $cols[2]->getDefinition();
-        $this->assertSame('JSON', $payloadDef['type']);
+        // What it is stored as and what the model does with it are two separate
+        // questions, because MariaDB cannot store a JSON type at all.
+        $this->assertSame('LONGTEXT', $payloadDef['type']);
+        $this->assertTrue($payloadDef['json'], 'still encoded and decoded as JSON');
         $this->assertTrue($payloadDef['nullable']);
     }
 }

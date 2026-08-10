@@ -9,11 +9,18 @@ class Column
 {
     private array $definition;
 
-    public function __construct(string $name, string $type)
+    /**
+     * $json marks a column the model encodes and decodes, which is not the same
+     * question as what type it is stored as. MariaDB has no JSON type, so a JSON
+     * column is physically LONGTEXT there and the type string cannot carry the
+     * answer.
+     */
+    public function __construct(string $name, string $type, bool $json = false)
     {
         $this->definition = [
             'name' => $name,
             'type' => $type,
+            'json' => $json,
             'nullable' => false,
             'default' => null,
             'hasDefault' => false,

@@ -1,0 +1,79 @@
+name: CI
+
+# The schema compiler is only correct relative to a server. Its job is to emit
+# the column type the server will report back, so that dbDelta agrees a
+# just-created table is already correct and stops.
+#
+# That has to be checked on both engines, because they disagree. MariaDB has no
+# JSON type and reports a json column back as longtext, and MySQL 8.0.17 dropped
+# integer display widths while MariaDB kept them. A suite that meets only one of
+# them passes while the other re-runs ALTER TABLE on every migration forever.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    name: Unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+          tools: composer
+      - run: composer install --prefer-dist --no-progress
+      - run: composer test
+
+  convergence:
+    name: Convergence (${{ matrix.db.name }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        db:
+          - name: MySQL 8.0
+            image: mysql:8.0
+          - name: MariaDB 10.11
+            image: mariadb:10.11
+
+    services:
+      mysql:
+        image: ${{ matrix.db.image }}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: mysqli, mbstring, dom, curl
+          coverage: none
+          tools: composer
+
+      - run: composer install --prefer-dist --no-progress
+
+      - name: Provision WordPress test environment
+        run: bash bin/install-wp-tests.sh wordpress_test root root 127.0.0.1 latest
+
+      # SchemaConvergenceTest skips itself without $wpdb, which would make a
+      # green run meaningless. Fail instead if the environment did not come up.
+      - name: The integration suite really ran
+        run: |
+          OUT="$(composer test:wp 2>&1)"
+          echo "$OUT"
+          echo "$OUT" | grep -qi "skipped" && { echo "::error::a convergence test skipped; the WP env did not provision"; exit 1; }
+          exit 0
