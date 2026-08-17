@@ -218,6 +218,12 @@ $campaign->slug = 'summer';
 $campaign->price = 29.99;
 $campaign->save();
 
+// make() also takes an optional attributes array, applied the same way
+// $model['key'] = $value would be: a declared property is set directly,
+// anything else lands in the extras bag.
+$campaign = Campaign::make(['name' => 'Summer', 'slug' => 'summer']);
+$campaign->save();
+
 // Update existing
 $campaign = Campaign::query()->find('id', 1950);
 $campaign->name = 'Updated';

@@ -85,9 +85,15 @@ abstract class Model implements ArrayAccess
         return static::newBuilder();
     }
 
-    public static function make(): static
+    public static function make(array $attributes = []): static
     {
-        return new static();
+        $instance = new static();
+
+        foreach ($attributes as $key => $value) {
+            $instance->offsetSet($key, $value);
+        }
+
+        return $instance;
     }
 
     protected static function fromRow(array $row): static

@@ -4,6 +4,7 @@
         <testsuite name="Unit">
             <directory>tests/Concerns</directory>
             <file>tests/TableTest.php</file>
+            <file>tests/ModelMakeTest.php</file>
         </testsuite>
     </testsuites>
 </phpunit>

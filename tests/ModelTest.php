@@ -575,6 +575,14 @@ class ModelTest extends \WP_UnitTestCase
         $this->assertInstanceOf(Campaign::class, $campaign);
     }
 
+    public function test_make_sets_declared_properties_from_attributes(): void
+    {
+        $campaign = Campaign::make(['name' => 'Quick', 'slug' => 'quick']);
+
+        $this->assertSame('Quick', $campaign->name);
+        $this->assertSame('quick', $campaign->slug);
+    }
+
     public function testSaveInsertsNewRecord(): void
     {
         $campaign = Campaign::make();
