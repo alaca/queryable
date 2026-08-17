@@ -17,6 +17,19 @@ class QueryCompiler
     }
 
     /**
+     * Backtick-quote a column identifier so a reserved-word column name (e.g.
+     * `trigger`, `cursor`) still compiles to valid SQL. Embedded backticks are
+     * escaped by doubling, the standard MySQL escape. Used only for the INSERT
+     * column list and UPDATE SET clause: SELECT/WHERE/ORDER BY/GROUP BY/JOIN
+     * identifiers legitimately carry qualified names and expressions, and must
+     * stay untouched.
+     */
+    private function quoteIdentifier(string $name): string
+    {
+        return '`' . str_replace('`', '``', $name) . '`';
+    }
+
+    /**
      * Strip a leading SQL keyword if present. Faster than preg_replace.
      */
     private function stripKeyword(string $sql, string $keyword): string
@@ -241,7 +254,7 @@ class QueryCompiler
 
         // Bulk insert: data is array of Data arrays
         if (is_array($data[0])) {
-            $columns = implode(', ', array_map(fn (Data $d) => $d->column, $data[0]));
+            $columns = implode(', ', array_map(fn (Data $d) => $this->quoteIdentifier($d->column), $data[0]));
             $rows = array_map(
                 fn (array $row) => '(' . implode(', ', array_map(fn (Data $d) => $d->value, $row)) . ')',
                 $data,
@@ -251,7 +264,7 @@ class QueryCompiler
         }
 
         // Single insert
-        $columns = implode(', ', array_map(fn (Data $d) => $d->column, $data));
+        $columns = implode(', ', array_map(fn (Data $d) => $this->quoteIdentifier($d->column), $data));
         $values = implode(', ', array_map(fn (Data $d) => $d->value, $data));
 
         return "({$columns}) VALUES ({$values})";
@@ -275,7 +288,7 @@ class QueryCompiler
             return "SET {$data[0]->sql}";
         }
 
-        return 'SET ' . implode(', ', array_map(fn (Data $d) => "{$d->column} = {$d->value}", $data));
+        return 'SET ' . implode(', ', array_map(fn (Data $d) => "{$this->quoteIdentifier($d->column)} = {$d->value}", $data));
     }
 
     private function compileDeleteFrom(): string

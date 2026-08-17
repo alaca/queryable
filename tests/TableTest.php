@@ -17,11 +17,11 @@ class TableTest extends TestCase
         $sql = $table->compile('wp_products');
 
         $this->assertStringContainsString('CREATE TABLE wp_products', $sql);
-        $this->assertStringContainsString('id bigint(20) unsigned NOT NULL AUTO_INCREMENT', $sql);
-        $this->assertStringContainsString('PRIMARY KEY  (id)', $sql);
-        $this->assertStringContainsString('name varchar(255) NOT NULL', $sql);
-        $this->assertStringContainsString('email varchar(255) NOT NULL', $sql);
-        $this->assertStringContainsString('UNIQUE KEY uk_email (email)', $sql);
+        $this->assertStringContainsString('`id` bigint(20) unsigned NOT NULL AUTO_INCREMENT', $sql);
+        $this->assertStringContainsString('PRIMARY KEY  (`id`)', $sql);
+        $this->assertStringContainsString('`name` varchar(255) NOT NULL', $sql);
+        $this->assertStringContainsString('`email` varchar(255) NOT NULL', $sql);
+        $this->assertStringContainsString('UNIQUE KEY uk_email (`email`)', $sql);
     }
 
     public function testColumnTypes(): void
@@ -43,21 +43,21 @@ class TableTest extends TestCase
 
         $sql = $table->compile('wp_items');
 
-        $this->assertStringContainsString('description text NOT NULL', $sql);
-        $this->assertStringContainsString('content longtext NOT NULL', $sql);
-        $this->assertStringContainsString('quantity int(11) NOT NULL', $sql);
-        $this->assertStringContainsString('views bigint(20) NOT NULL', $sql);
-        $this->assertStringContainsString('priority tinyint(4) NOT NULL', $sql);
-        $this->assertStringContainsString('rating float NOT NULL', $sql);
-        $this->assertStringContainsString('price decimal(8,2) NOT NULL', $sql);
-        $this->assertStringContainsString('active tinyint(1) NOT NULL', $sql);
-        $this->assertStringContainsString('birth_date date NOT NULL', $sql);
-        $this->assertStringContainsString('published_at datetime NOT NULL', $sql);
+        $this->assertStringContainsString('`description` text NOT NULL', $sql);
+        $this->assertStringContainsString('`content` longtext NOT NULL', $sql);
+        $this->assertStringContainsString('`quantity` int(11) NOT NULL', $sql);
+        $this->assertStringContainsString('`views` bigint(20) NOT NULL', $sql);
+        $this->assertStringContainsString('`priority` tinyint(4) NOT NULL', $sql);
+        $this->assertStringContainsString('`rating` float NOT NULL', $sql);
+        $this->assertStringContainsString('`price` decimal(8,2) NOT NULL', $sql);
+        $this->assertStringContainsString('`active` tinyint(1) NOT NULL', $sql);
+        $this->assertStringContainsString('`birth_date` date NOT NULL', $sql);
+        $this->assertStringContainsString('`published_at` datetime NOT NULL', $sql);
         // Stored as longtext, not json: MariaDB has no JSON type and reports
         // such a column back as longtext, so emitting json means dbDelta never
         // agrees the table is already correct.
-        $this->assertStringContainsString('settings longtext NOT NULL', $sql);
-        $this->assertStringContainsString("status enum('draft','published','archived') NOT NULL", $sql);
+        $this->assertStringContainsString('`settings` longtext NOT NULL', $sql);
+        $this->assertStringContainsString("`status` enum('draft','published','archived') NOT NULL", $sql);
     }
 
     public function testNullableAndDefault(): void
@@ -71,11 +71,11 @@ class TableTest extends TestCase
 
         $sql = $table->compile('wp_products');
 
-        $this->assertStringContainsString('stock int(11) NOT NULL DEFAULT 0', $sql);
-        $this->assertStringContainsString("status varchar(255) NOT NULL DEFAULT 'draft'", $sql);
-        $this->assertStringContainsString('deleted_at datetime', $sql);
-        $this->assertStringNotContainsString('deleted_at datetime NOT NULL', $sql);
-        $this->assertStringContainsString('featured tinyint(1) NOT NULL DEFAULT 0', $sql);
+        $this->assertStringContainsString('`stock` int(11) NOT NULL DEFAULT 0', $sql);
+        $this->assertStringContainsString("`status` varchar(255) NOT NULL DEFAULT 'draft'", $sql);
+        $this->assertStringContainsString('`deleted_at` datetime', $sql);
+        $this->assertStringNotContainsString('`deleted_at` datetime NOT NULL', $sql);
+        $this->assertStringContainsString('`featured` tinyint(1) NOT NULL DEFAULT 0', $sql);
     }
 
     public function testDatetimeColumns(): void
@@ -87,8 +87,8 @@ class TableTest extends TestCase
 
         $sql = $table->compile('wp_posts');
 
-        $this->assertStringContainsString('created_at datetime', $sql);
-        $this->assertStringContainsString('updated_at datetime', $sql);
+        $this->assertStringContainsString('`created_at` datetime', $sql);
+        $this->assertStringContainsString('`updated_at` datetime', $sql);
     }
 
     public function testForeignKey(): void
@@ -99,8 +99,8 @@ class TableTest extends TestCase
 
         $sql = $table->compile('wp_orders');
 
-        $this->assertStringContainsString('user_id bigint(20) unsigned NOT NULL', $sql);
-        $this->assertStringContainsString('FOREIGN KEY (user_id) REFERENCES wp_users(ID) ON DELETE CASCADE', $sql);
+        $this->assertStringContainsString('`user_id` bigint(20) unsigned NOT NULL', $sql);
+        $this->assertStringContainsString('FOREIGN KEY (`user_id`) REFERENCES wp_users(ID) ON DELETE CASCADE', $sql);
     }
 
     public function testUnsigned(): void
@@ -111,7 +111,7 @@ class TableTest extends TestCase
 
         $sql = $table->compile('wp_items');
 
-        $this->assertStringContainsString('quantity int(10) unsigned NOT NULL', $sql);
+        $this->assertStringContainsString('`quantity` int(10) unsigned NOT NULL', $sql);
     }
 
     public function testMetaTableDefault(): void
@@ -205,7 +205,7 @@ class TableTest extends TestCase
         $t->id();
         $t->string('country', 2)->index();
         $sql = $t->compile('test_table');
-        $this->assertStringContainsString('KEY idx_country (country)', $sql);
+        $this->assertStringContainsString('KEY idx_country (`country`)', $sql);
     }
 
     public function test_column_level_index_with_explicit_name(): void
@@ -214,7 +214,7 @@ class TableTest extends TestCase
         $t->id();
         $t->string('email_hash', 64)->index('uk_lookup');
         $sql = $t->compile('test_table');
-        $this->assertStringContainsString('KEY uk_lookup (email_hash)', $sql);
+        $this->assertStringContainsString('KEY uk_lookup (`email_hash`)', $sql);
     }
 
     public function test_table_level_single_index(): void
@@ -224,7 +224,7 @@ class TableTest extends TestCase
         $t->string('status', 20);
         $t->index('status');
         $sql = $t->compile('test_table');
-        $this->assertStringContainsString('KEY idx_status (status)', $sql);
+        $this->assertStringContainsString('KEY idx_status (`status`)', $sql);
     }
 
     public function test_table_level_composite_index(): void
@@ -235,7 +235,7 @@ class TableTest extends TestCase
         $t->datetime('paid_at');
         $t->index(['status', 'paid_at']);
         $sql = $t->compile('test_table');
-        $this->assertStringContainsString('KEY idx_status_paid_at (status,paid_at)', $sql);
+        $this->assertStringContainsString('KEY idx_status_paid_at (`status`,`paid_at`)', $sql);
     }
 
     public function test_table_level_composite_index_with_name(): void
@@ -246,7 +246,7 @@ class TableTest extends TestCase
         $t->datetime('paid_at');
         $t->index(['status', 'paid_at'], 'idx_pay_status');
         $sql = $t->compile('test_table');
-        $this->assertStringContainsString('KEY idx_pay_status (status,paid_at)', $sql);
+        $this->assertStringContainsString('KEY idx_pay_status (`status`,`paid_at`)', $sql);
     }
 
     public function test_composite_unique_default_name(): void
@@ -257,7 +257,7 @@ class TableTest extends TestCase
         $t->string('external_id', 128);
         $t->unique(['gateway', 'external_id']);
         $sql = $t->compile('test_table');
-        $this->assertStringContainsString('UNIQUE KEY uk_gateway_external_id (gateway,external_id)', $sql);
+        $this->assertStringContainsString('UNIQUE KEY uk_gateway_external_id (`gateway`,`external_id`)', $sql);
     }
 
     public function test_composite_unique_with_name(): void
@@ -268,7 +268,7 @@ class TableTest extends TestCase
         $t->string('external_id', 128);
         $t->unique(['gateway', 'external_id'], 'uk_gw_ext');
         $sql = $t->compile('test_table');
-        $this->assertStringContainsString('UNIQUE KEY uk_gw_ext (gateway,external_id)', $sql);
+        $this->assertStringContainsString('UNIQUE KEY uk_gw_ext (`gateway`,`external_id`)', $sql);
     }
 
     public function test_column_level_unique_compiles_to_a_separate_unique_key(): void
@@ -279,9 +279,9 @@ class TableTest extends TestCase
         $sql = $t->compile('test_table');
         // Inline UNIQUE is invisible to dbDelta (re-adds the index every
         // migrate); it must become a named UNIQUE KEY line like composite uniques.
-        $this->assertStringContainsString('slug varchar(200) NOT NULL', $sql);
+        $this->assertStringContainsString('`slug` varchar(200) NOT NULL', $sql);
         $this->assertStringNotContainsString('NOT NULL UNIQUE', $sql);
-        $this->assertStringContainsString('UNIQUE KEY uk_slug (slug)', $sql);
+        $this->assertStringContainsString('UNIQUE KEY uk_slug (`slug`)', $sql);
     }
 
     public function test_index_name_truncation_for_very_long_columns(): void
@@ -309,9 +309,64 @@ class TableTest extends TestCase
         $t->string('status', 20);
         $t->index(['status', 'paid_at']);
         $sql = $t->compile('test_table');
-        $this->assertStringContainsString('KEY idx_country (country)', $sql);
-        $this->assertStringContainsString('KEY idx_paid_at (paid_at)', $sql);
-        $this->assertStringContainsString('KEY idx_status_paid_at (status,paid_at)', $sql);
+        $this->assertStringContainsString('KEY idx_country (`country`)', $sql);
+        $this->assertStringContainsString('KEY idx_paid_at (`paid_at`)', $sql);
+        $this->assertStringContainsString('KEY idx_status_paid_at (`status`,`paid_at`)', $sql);
+    }
+
+    public function test_reserved_word_column_name_is_quoted(): void
+    {
+        $t = new Table();
+        $t->id();
+        $t->string('trigger', 50);
+        $sql = $t->compile('test_table');
+        $this->assertStringContainsString('`trigger` varchar(50) NOT NULL', $sql);
+    }
+
+    public function test_another_reserved_word_column_name_is_quoted(): void
+    {
+        $t = new Table();
+        $t->id();
+        $t->string('cursor', 50);
+        $sql = $t->compile('test_table');
+        $this->assertStringContainsString('`cursor` varchar(50) NOT NULL', $sql);
+    }
+
+    public function test_composite_index_over_reserved_word_columns_quotes_each_column(): void
+    {
+        $t = new Table();
+        $t->id();
+        $t->string('trigger', 20);
+        $t->string('cursor', 20);
+        $t->index(['trigger', 'cursor']);
+        $sql = $t->compile('test_table');
+        $this->assertStringContainsString('KEY idx_trigger_cursor (`trigger`,`cursor`)', $sql);
+    }
+
+    public function test_column_name_with_literal_backtick_is_escaped_by_doubling(): void
+    {
+        $t = new Table();
+        $t->id();
+        $t->string('weird`name', 20);
+        $sql = $t->compile('test_table');
+        $this->assertStringContainsString('`weird``name` varchar(20) NOT NULL', $sql);
+    }
+
+    public function test_primary_key_column_is_quoted(): void
+    {
+        $t = new Table();
+        $t->id();
+        $sql = $t->compile('test_table');
+        $this->assertStringContainsString('PRIMARY KEY  (`id`)', $sql);
+    }
+
+    public function test_foreign_key_local_column_is_quoted(): void
+    {
+        $t = new Table();
+        $t->id();
+        $t->bigInteger('order')->unsigned()->references('wp_orders', 'ID');
+        $sql = $t->compile('test_table');
+        $this->assertStringContainsString('FOREIGN KEY (`order`) REFERENCES wp_orders(ID)', $sql);
     }
 
     public function test_getColumns_exposes_column_collection(): void

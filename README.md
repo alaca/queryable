@@ -290,6 +290,8 @@ Campaign::query()->upsert(
 );
 ```
 
+The INSERT column list is always backtick-quoted, so a data key named after a reserved word (`cursor`, `trigger`, ...) still compiles to valid SQL.
+
 ## Update
 
 ```php
@@ -309,6 +311,8 @@ Campaign::query()->where('id', 1)->decrement('stock', 3);
 // raw update
 Campaign::query()->where('id', 1)->updateRaw("stock = stock + 1");
 ```
+
+The UPDATE SET clause quotes column names the same way the INSERT column list does.
 
 ## Delete
 
@@ -762,27 +766,27 @@ Available modifiers: `->nullable()`, `->unique()`, `->primary()`, `->unsigned()`
 Single-column indexes can be declared fluently on the column:
 
 ```php
-$table->string('country', 2)->index();              // KEY idx_country (country)
-$table->string('country', 2)->index('cc_idx');      // KEY cc_idx (country)
+$table->string('country', 2)->index();              // KEY idx_country (`country`)
+$table->string('country', 2)->index('cc_idx');      // KEY cc_idx (`country`)
 ```
 
 Composite indexes are declared on the table:
 
 ```php
-$table->index(['status', 'paid_at']);                   // KEY idx_status_paid_at (status,paid_at)
-$table->index(['status', 'paid_at'], 'idx_pay_status'); // KEY idx_pay_status (status,paid_at)
+$table->index(['status', 'paid_at']);                   // KEY idx_status_paid_at (`status`,`paid_at`)
+$table->index(['status', 'paid_at'], 'idx_pay_status'); // KEY idx_pay_status (`status`,`paid_at`)
 ```
 
 Composite unique indexes use `Table::unique()`
 
 ```php
-$table->unique(['gateway', 'external_id']);             // UNIQUE KEY uk_gateway_external_id (gateway,external_id)
-$table->unique(['gateway', 'external_id'], 'uk_gw_ext'); // UNIQUE KEY uk_gw_ext (gateway,external_id)
+$table->unique(['gateway', 'external_id']);             // UNIQUE KEY uk_gateway_external_id (`gateway`,`external_id`)
+$table->unique(['gateway', 'external_id'], 'uk_gw_ext'); // UNIQUE KEY uk_gw_ext (`gateway`,`external_id`)
 ```
 
 When no name is supplied, names are generated as `idx_` / `uk_` + the column list joined with underscores, lowercased. Names longer than 64 characters (MySQL's identifier limit) are truncated with a 6-char hash suffix to stay collision-safe.
 
-Output is `dbDelta()`-compatible — uppercase `KEY` on its own line with tight `(col1,col2)` formatting.
+Output is `dbDelta()`-compatible — uppercase `KEY` on its own line with tight `(col1,col2)` formatting. Column names in `compile()`'s output (column definitions, `PRIMARY KEY`/`UNIQUE KEY`/`KEY`/`FOREIGN KEY` column lists) are always backtick-quoted, so a column named after a MySQL reserved word (`trigger`, `cursor`, ...) still compiles to valid DDL.
 
 ### Meta Table Auto-Creation
 

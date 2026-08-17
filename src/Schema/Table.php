@@ -215,6 +215,16 @@ class Table
         return $this;
     }
 
+    /**
+     * Backtick-quote a column identifier so a reserved-word column name (e.g.
+     * `trigger`, `cursor`) still compiles to valid DDL. Embedded backticks are
+     * escaped by doubling, the standard MySQL escape.
+     */
+    private function quoteIdentifier(string $name): string
+    {
+        return '`' . str_replace('`', '``', $name) . '`';
+    }
+
     private function generateIndexName(string $prefix, array $columns): string
     {
         $base = $prefix . '_' . implode('_', array_map(
@@ -272,7 +282,7 @@ class Table
             // schema (lowercase, with integer display widths). Emit the same
             // canonical shape so a re-run converges to a no-op instead of an
             // endless ALTER ... CHANGE COLUMN.
-            $line = "{$def['name']} " . $this->canonicalType($def['type'], (bool) $def['unsigned']);
+            $line = $this->quoteIdentifier($def['name']) . ' ' . $this->canonicalType($def['type'], (bool) $def['unsigned']);
 
             if ($def['unsigned']) {
                 $line .= ' unsigned';
@@ -299,7 +309,7 @@ class Table
             $defs[] = $line;
 
             if ($def['primary']) {
-                $constraints[] = "PRIMARY KEY  ({$def['name']})";
+                $constraints[] = "PRIMARY KEY  ({$this->quoteIdentifier($def['name'])})";
             }
 
             // Column-level unique() becomes a separate UNIQUE KEY line (like
@@ -307,11 +317,11 @@ class Table
             // re-adds the index every migrate ("Too many keys").
             if ($def['unique']) {
                 $name = $this->generateIndexName('uk', [$def['name']]);
-                $constraints[] = "UNIQUE KEY {$name} ({$def['name']})";
+                $constraints[] = "UNIQUE KEY {$name} ({$this->quoteIdentifier($def['name'])})";
             }
 
             if ($def['references']) {
-                $fk = "FOREIGN KEY ({$def['name']}) REFERENCES {$def['references']['table']}({$def['references']['column']})";
+                $fk = "FOREIGN KEY ({$this->quoteIdentifier($def['name'])}) REFERENCES {$def['references']['table']}({$def['references']['column']})";
                 if ($def['onDelete']) {
                     $fk .= " ON DELETE {$def['onDelete']}";
                 }
@@ -323,19 +333,19 @@ class Table
             $def = $col->getDefinition();
             if (!empty($def['index'])) {
                 $name = $def['indexName'] ?? $this->generateIndexName('idx', [$def['name']]);
-                $constraints[] = "KEY {$name} ({$def['name']})";
+                $constraints[] = "KEY {$name} ({$this->quoteIdentifier($def['name'])})";
             }
         }
 
         foreach ($this->indexes as $idx) {
             $name = $idx['name'] ?? $this->generateIndexName('idx', $idx['cols']);
-            $colsList = implode(',', $idx['cols']);
+            $colsList = implode(',', array_map(fn ($c) => $this->quoteIdentifier($c), $idx['cols']));
             $constraints[] = "KEY {$name} ({$colsList})";
         }
 
         foreach ($this->compositeUniques as $idx) {
             $name = $idx['name'] ?? $this->generateIndexName('uk', $idx['cols']);
-            $colsList = implode(',', $idx['cols']);
+            $colsList = implode(',', array_map(fn ($c) => $this->quoteIdentifier($c), $idx['cols']));
             $constraints[] = "UNIQUE KEY {$name} ({$colsList})";
         }
 

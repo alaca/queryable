@@ -12,7 +12,7 @@ class MutationTest extends QueryBuilderTestCase
         $qb->insert(['name' => 'John', 'age' => 30]);
 
         $this->assertEquals(
-            "INSERT INTO users (name, age) VALUES ('John', 30)",
+            "INSERT INTO users (`name`, `age`) VALUES ('John', 30)",
             $qb->toSQL(),
         );
     }
@@ -26,7 +26,7 @@ class MutationTest extends QueryBuilderTestCase
         ]);
 
         $this->assertEquals(
-            "INSERT INTO users (name, age) VALUES ('John', 30), ('Jane', 25)",
+            "INSERT INTO users (`name`, `age`) VALUES ('John', 30), ('Jane', 25)",
             $qb->toSQL(),
         );
     }
@@ -37,7 +37,7 @@ class MutationTest extends QueryBuilderTestCase
         $qb->update(['name' => 'Bob']);
 
         $this->assertEquals(
-            "UPDATE users SET name = 'Bob' WHERE id = 1",
+            "UPDATE users SET `name` = 'Bob' WHERE id = 1",
             $qb->toSQL(),
         );
     }
@@ -68,7 +68,7 @@ class MutationTest extends QueryBuilderTestCase
         );
 
         $this->assertEquals(
-            "INSERT INTO users (name, email) VALUES ('Alice', 'a@test.com') ON DUPLICATE KEY UPDATE name = VALUES(name)",
+            "INSERT INTO users (`name`, `email`) VALUES ('Alice', 'a@test.com') ON DUPLICATE KEY UPDATE name = VALUES(name)",
             $qb->toSQL(),
         );
     }
@@ -123,7 +123,7 @@ class MutationTest extends QueryBuilderTestCase
         $qb->update(['archived' => 1]);
 
         $this->assertEquals(
-            'UPDATE users SET archived = 1 WHERE active = 0 LIMIT 100',
+            'UPDATE users SET `archived` = 1 WHERE active = 0 LIMIT 100',
             $qb->toSQL(),
         );
     }
@@ -134,7 +134,7 @@ class MutationTest extends QueryBuilderTestCase
         $qb->update(['archived' => 1]);
 
         $this->assertEquals(
-            'UPDATE users SET archived = 1 WHERE active = 0 ORDER BY id ASC LIMIT 100',
+            'UPDATE users SET `archived` = 1 WHERE active = 0 ORDER BY id ASC LIMIT 100',
             $qb->toSQL(),
         );
     }
@@ -157,6 +157,43 @@ class MutationTest extends QueryBuilderTestCase
 
         $this->assertEquals(
             "DELETE FROM audit_log WHERE created_at < '2020-01-01' ORDER BY id ASC LIMIT 1000",
+            $qb->toSQL(),
+        );
+    }
+
+    public function test_insert_column_list_quotes_a_reserved_word_column(): void
+    {
+        $qb = DB::table('users');
+        $qb->insert(['cursor' => 'abc123']);
+
+        $this->assertEquals(
+            "INSERT INTO users (`cursor`) VALUES ('abc123')",
+            $qb->toSQL(),
+        );
+    }
+
+    public function test_update_set_clause_quotes_a_reserved_word_column(): void
+    {
+        $qb = DB::table('users')->where('id', 1);
+        $qb->update(['trigger' => 'armed']);
+
+        $this->assertEquals(
+            "UPDATE users SET `trigger` = 'armed' WHERE id = 1",
+            $qb->toSQL(),
+        );
+    }
+
+    /**
+     * Scope guard: only the INSERT column list and UPDATE SET clause are
+     * quoted. SELECT/WHERE identifiers must stay untouched, so callers can
+     * still pass qualified names (t.col) and expressions through them.
+     */
+    public function test_select_and_where_identifiers_stay_unquoted(): void
+    {
+        $qb = DB::table('users')->select('trigger')->where('cursor', 'abc');
+
+        $this->assertEquals(
+            "SELECT trigger FROM users WHERE cursor = 'abc'",
             $qb->toSQL(),
         );
     }
