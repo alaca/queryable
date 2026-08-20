@@ -913,7 +913,14 @@ class ModelTest extends \WP_UnitTestCase
         }
 
         $this->assertTrue($caught);
-        $this->assertSame(['START TRANSACTION', 'ROLLBACK'], $cap->queries);
+        // The inner block undoes itself against its savepoint and rethrows; the
+        // outer block, catching nothing, rolls the whole transaction back. Still
+        // one START TRANSACTION and one ROLLBACK.
+        $this->assertSame([
+            'START TRANSACTION',
+            'ROLLBACK TO SAVEPOINT QUERYABLE_SP_1',
+            'ROLLBACK',
+        ], $cap->queries);
     }
 
     public function test_model_transaction_shares_depth_with_db_transaction(): void

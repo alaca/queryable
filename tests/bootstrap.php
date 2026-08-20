@@ -13,6 +13,11 @@ if (file_exists($wpTestsDir . '/includes/functions.php')) {
     });
 
     require_once $wpTestsDir . '/includes/bootstrap.php';
+} elseif (getenv('QUERYABLE_REQUIRE_WP') === '1') {
+    fwrite(STDERR, "\nThe WordPress test library is not at {$wpTestsDir}.\n"
+        . "Every file in this suite is a no-op without it, so the run would report\n"
+        . "success having tested nothing. Set WP_TESTS_DIR or install the library.\n\n");
+    exit(1);
 } else {
     require_once __DIR__ . '/../vendor/autoload.php';
 

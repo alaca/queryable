@@ -91,33 +91,63 @@ class DB
     /**
      * Run $callback inside a database transaction.
      *
-     * Nested calls reuse the outermost transaction instead of
-     * issuing another START TRANSACTION (which MySQL implicit-commits the
-     * outer, silently dropping atomicity). Only the outermost call runs
-     * START TRANSACTION / COMMIT / ROLLBACK.
+     * Only the outermost call runs START TRANSACTION / COMMIT / ROLLBACK: a
+     * second START TRANSACTION implicit-commits the first, which would drop the
+     * atomicity of everything already written. A nested call instead takes a
+     * SAVEPOINT and, on the way out, rolls back to it or releases it, so a
+     * throw undoes that block alone and leaves the enclosing transaction open.
+     *
+     * The savepoint name is a fixed prefix plus the nesting depth, so it is
+     * unique among the savepoints currently open and can only ever be digits.
+     * Levels the callback has already left reuse a name safely: MySQL replaces
+     * a same-named savepoint, and that one is gone either way.
      */
     public static function transaction(callable $callback): mixed
     {
         global $wpdb;
 
+        $savepoint = null;
+
         if (self::$transactionDepth === 0) {
             $wpdb->query('START TRANSACTION');
+        } else {
+            $savepoint = 'queryable_sp_' . self::$transactionDepth;
+            $wpdb->query('SAVEPOINT ' . $savepoint);
+            // Running the callback without a savepoint to undo it would restore
+            // the silent no-op this exists to remove: the block would look
+            // transactional and roll back nothing. Nothing has run yet, so the
+            // caller can still be told before any of it is attempted.
+            self::assertNoDbError('SAVEPOINT ' . $savepoint);
         }
+
         self::$transactionDepth++;
 
         try {
             $result = $callback();
         } catch (Throwable $e) {
             self::$transactionDepth--;
-            if (self::$transactionDepth === 0) {
+            if ($savepoint === null) {
                 $wpdb->query('ROLLBACK');
+            } else {
+                // Deliberately unchecked: the callback's exception is the
+                // caller's cause and callers dispatch on its type, so it has to
+                // arrive unchanged. A savepoint can only have vanished here
+                // through an implicit commit or a lost connection, neither of
+                // which this layer can undo.
+                $wpdb->query('ROLLBACK TO SAVEPOINT ' . $savepoint);
             }
             throw $e;
         }
 
         self::$transactionDepth--;
-        if (self::$transactionDepth === 0) {
+        if ($savepoint === null) {
             $wpdb->query('COMMIT');
+        } else {
+            // Unchecked for the same reason, minus the exception: the block
+            // succeeded, and a savepoint that is already gone cannot be given
+            // back. Releasing at all is what stops them accumulating for the
+            // life of the enclosing transaction.
+            $wpdb->query('RELEASE SAVEPOINT ' . $savepoint);
         }
 
         return $result;

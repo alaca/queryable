@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit bootstrap="tests/bootstrap.php" colors="true">
+    <php>
+        <!-- Every file in this suite declares nothing without WordPress, so a
+             missing test library makes the run pass by testing zero things. -->
+        <env name="QUERYABLE_REQUIRE_WP" value="1"/>
+    </php>
     <testsuites>
         <testsuite name="WP Integration">
             <file>tests/ModelTest.php</file>
+            <file>tests/SavepointTest.php</file>
             <file>tests/SchemaConvergenceTest.php</file>
             <file>tests/WriteErrorTest.php</file>
         </testsuite>
