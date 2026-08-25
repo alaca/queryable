@@ -345,9 +345,16 @@ class Table
         return $base . $args;
     }
 
+    /**
+     * ENGINE is declared, never inherited. On a server whose
+     * default_storage_engine is MyISAM the table would silently lose
+     * transactions and crash safety, or fail outright on the 1000-byte index
+     * key ceiling, and dbDelta ignores everything outside the parentheses so a
+     * later CREATE cannot repair it.
+     */
     private function tableOptions(): string
     {
-        $options = "DEFAULT CHARSET={$this->charset} COLLATE={$this->collate}";
+        $options = "ENGINE=InnoDB DEFAULT CHARSET={$this->charset} COLLATE={$this->collate}";
 
         if ($this->rowFormat) {
             $options .= " ROW_FORMAT={$this->rowFormat}";

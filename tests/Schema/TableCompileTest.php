@@ -173,4 +173,30 @@ final class TableCompileTest extends TestCase
 
         self::assertStringContainsString('`flag` tinyint(1) unsigned NOT NULL', $t->compile('wp_x'));
     }
+
+    /**
+     * MyISAM has no transactions and a 1000-byte index key ceiling, so a table
+     * that inherits it from default_storage_engine either loses every
+     * transactional guarantee or fails to create at all. dbDelta ignores
+     * everything outside the parentheses, so a later CREATE cannot repair it.
+     */
+    public function test_engine_is_declared(): void
+    {
+        $t = new Table();
+        $t->id();
+
+        self::assertStringContainsString('ENGINE=InnoDB', $t->compile('wp_x'));
+    }
+
+    public function test_table_options_are_engine_then_charset_then_row_format(): void
+    {
+        $t = new Table('utf8mb4', 'utf8mb4_unicode_520_ci');
+        $t->id();
+        $t->rowFormat('DYNAMIC');
+
+        self::assertStringEndsWith(
+            ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci ROW_FORMAT=DYNAMIC',
+            $t->compile('wp_x')
+        );
+    }
 }
