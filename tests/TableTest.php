@@ -186,7 +186,7 @@ class TableTest extends TestCase
 
         $sql = $table->compile('wp_test');
 
-        $this->assertStringContainsString('DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci', $sql);
+        $this->assertStringContainsString('DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci', $sql);
     }
 
     public function testDefaultCharset(): void
@@ -196,7 +196,7 @@ class TableTest extends TestCase
 
         $sql = $table->compile('wp_test');
 
-        $this->assertStringContainsString('DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci', $sql);
+        $this->assertStringContainsString('DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci', $sql);
     }
 
     public function test_column_level_index_with_default_name(): void

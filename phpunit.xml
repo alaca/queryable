@@ -3,6 +3,7 @@
     <testsuites>
         <testsuite name="Unit">
             <directory>tests/Concerns</directory>
+            <directory>tests/Schema</directory>
             <file>tests/TableTest.php</file>
             <file>tests/ModelMakeTest.php</file>
         </testsuite>

@@ -28,6 +28,8 @@ class Column
             'primary' => false,
             'autoIncrement' => false,
             'unsigned' => false,
+            'charset' => null,
+            'collate' => null,
             'references' => null,
             'onDelete' => null,
             'index' => false,
@@ -59,6 +61,14 @@ class Column
     public function unsigned(): static
     {
         $this->definition['unsigned'] = true;
+
+        return $this;
+    }
+
+    public function charset(string $charset, ?string $collate = null): static
+    {
+        $this->definition['charset'] = $charset;
+        $this->definition['collate'] = $collate;
 
         return $this;
     }
