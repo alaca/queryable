@@ -399,8 +399,16 @@ class Table
 
             $defs[] = $line;
 
-            if ($def['primary'] && !$this->compositePrimary) {
-                $constraints[] = "PRIMARY KEY  ({$this->quoteIdentifier($def['name'])})";
+            if ($def['primary']) {
+                if (!$this->compositePrimary) {
+                    $constraints[] = "PRIMARY KEY  ({$this->quoteIdentifier($def['name'])})";
+                } elseif ($def['autoIncrement'] && !in_array($def['name'], $this->compositePrimary, true)) {
+                    // Suppressing this column's primary key would leave the auto
+                    // increment column in no key at all, which is MySQL error 1075.
+                    throw new InvalidArgumentException(
+                        "Auto increment column {$def['name']} must be part of the composite primary key"
+                    );
+                }
             }
 
             // Column-level unique() becomes a separate UNIQUE KEY line (like

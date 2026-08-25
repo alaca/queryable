@@ -66,6 +66,31 @@ final class TableCompileTest extends TestCase
         self::assertStringContainsString('PRIMARY KEY (`id`, `field_key`)', $sql);
     }
 
+    public function test_a_composite_key_that_omits_an_auto_increment_column_throws(): void
+    {
+        $t = new Table();
+        $t->id();
+        $t->char('field_key', 16);
+        $t->primary(['field_key']);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('id');
+
+        $t->compile('wp_x');
+    }
+
+    public function test_the_auto_increment_guard_fires_when_the_key_is_declared_first(): void
+    {
+        $t = new Table();
+        $t->char('field_key', 16);
+        $t->primary(['field_key']);
+        $t->id();
+
+        $this->expectException(InvalidArgumentException::class);
+
+        $t->compile('wp_x');
+    }
+
     public function test_explicit_lengths_survive_canonicalisation(): void
     {
         $t = new Table();
