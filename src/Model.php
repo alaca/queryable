@@ -374,7 +374,7 @@ abstract class Model implements ArrayAccess
         return static::schemaBuilder()->compile(static::qualifiedTable());
     }
 
-    private static function qualifiedTable(): string
+    public static function qualifiedTable(): string
     {
         global $wpdb;
 
@@ -435,7 +435,12 @@ abstract class Model implements ArrayAccess
         update_option($optionKey, $model->version);
     }
 
-    private static function tableExists(string $table): bool
+    /**
+     * SHOW TABLES rather than information_schema: it is the one probe that
+     * ignores the temporary tables a test harness may have substituted, so it
+     * answers the question migration gating actually asks.
+     */
+    public static function tableExists(string $table): bool
     {
         global $wpdb;
 
