@@ -11,6 +11,13 @@ declare(strict_types=1);
 
 namespace Queryable;
 
+// function_exists() on the namespaced name is no guard: with WordPress loaded
+// only the global functions exist, so the stubs would be declared anyway and
+// would win resolution inside this namespace.
+if (defined('ABSPATH')) {
+    return;
+}
+
 if (!function_exists('Queryable\get_option')) {
     function get_option(string $key, mixed $default = false): mixed
     {
