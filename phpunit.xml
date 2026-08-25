@@ -10,6 +10,7 @@
             <file>tests/ModelSchemaTest.php</file>
             <file>tests/ModelCompileSchemaTest.php</file>
             <file>tests/ModelMigrateTest.php</file>
+            <file>tests/ModelWriteKeyTest.php</file>
             <file>tests/WpFunctionStubTest.php</file>
         </testsuite>
     </testsuites>

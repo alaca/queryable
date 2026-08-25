@@ -240,6 +240,24 @@ class Post extends Model
 }
 ```
 
+### Tables whose key is not generated
+
+`save()` reads the primary key to decide between an insert and an update, so it
+needs the database to generate that key. On a table with an `AUTO_INCREMENT`
+column that is what happens. On any other table the decision is wrong in one
+direction or the other and wrong silently, so `save()` refuses those tables and
+`insert()` writes them instead:
+
+```php
+$value = EntryValue::make(['entry_id' => 9, 'field_key' => 'fld_00000000000a']);
+$value->insert();
+```
+
+`insert()` writes every column the model holds, including the key columns, and
+never reads the key back. There is no create-or-update helper: making a read and
+a write atomic has to be stated in SQL (`INSERT ... ON DUPLICATE KEY UPDATE`),
+and this layer cannot do it for you.
+
 ## Lifecycle Hooks
 
 Override `onBeforeSave()` and `onSave()` to run logic before and after `save()`
@@ -830,7 +848,7 @@ $table->unique(['gateway', 'external_id'], 'uk_gw_ext'); // UNIQUE KEY uk_gw_ext
 
 When no name is supplied, names are generated as `idx_` / `uk_` + the column list joined with underscores, lowercased. Names longer than 64 characters (MySQL's identifier limit) are truncated with a 6-char hash suffix to stay collision-safe.
 
-Output is `dbDelta()`-compatible — uppercase `KEY` on its own line with tight `(col1,col2)` formatting. Column names in `compile()`'s output (column definitions, `PRIMARY KEY`/`UNIQUE KEY`/`KEY`/`FOREIGN KEY` column lists) are always backtick-quoted, so a column named after a MySQL reserved word (`trigger`, `cursor`, ...) still compiles to valid DDL.
+Output is `dbDelta()`-compatible: uppercase `KEY` on its own line with tight `(col1,col2)` formatting. Column names in `compile()`'s output (column definitions, `PRIMARY KEY`/`UNIQUE KEY`/`KEY`/`FOREIGN KEY` column lists) are always backtick-quoted, so a column named after a MySQL reserved word (`trigger`, `cursor`, ...) still compiles to valid DDL.
 
 ### Meta Table Auto-Creation
 

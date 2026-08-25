@@ -125,7 +125,7 @@ abstract class Model implements ArrayAccess
         return $instance;
     }
 
-    /** @return array{json: array<string>, nullable: array<string>} */
+    /** @return array{json: array<string>, nullable: array<string>, autoIncrement: ?string} */
     private static function columnMeta(): array
     {
         $class = static::class;
@@ -137,7 +137,7 @@ abstract class Model implements ArrayAccess
         $callback = static::$schemas[$class] ?? null;
 
         if (!$callback) {
-            return self::$columnMetaCache[$class] = ['json' => [], 'nullable' => []];
+            return self::$columnMetaCache[$class] = ['json' => [], 'nullable' => [], 'autoIncrement' => null];
         }
 
         $t = new Table();
@@ -145,6 +145,7 @@ abstract class Model implements ArrayAccess
 
         $jsonCols = [];
         $nullable = [];
+        $autoIncrement = null;
         foreach ($t->getColumns() as $col) {
             $def = $col->getDefinition();
             // The flag, not the type: a JSON column is stored as LONGTEXT so
@@ -155,9 +156,16 @@ abstract class Model implements ArrayAccess
             if (!empty($def['nullable'])) {
                 $nullable[] = $def['name'];
             }
+            if (!empty($def['autoIncrement'])) {
+                $autoIncrement = $def['name'];
+            }
         }
 
-        return self::$columnMetaCache[$class] = ['json' => $jsonCols, 'nullable' => $nullable];
+        return self::$columnMetaCache[$class] = [
+            'json' => $jsonCols,
+            'nullable' => $nullable,
+            'autoIncrement' => $autoIncrement,
+        ];
     }
 
     private static function castValue(mixed $value, ReflectionProperty $prop): mixed
@@ -235,34 +243,31 @@ abstract class Model implements ArrayAccess
         unset($this->extras[$offset]);
     }
 
+    /**
+     * Reads the primary key to choose between an insert and an update, so it
+     * only works where the database generates that key. A key the caller
+     * supplies is always present and always selects the update, which creates
+     * nothing while reporting success; a key that is absent from the schema is
+     * never present and always selects the insert, which collides on the
+     * second call. Both are silent, so neither is offered: insert() writes
+     * those tables, and an update goes through the query builder.
+     */
     public function save(): QueryResult
     {
+        $pk = $this->primaryKey;
+
+        if (isset(self::$schemas[static::class]) && static::columnMeta()['autoIncrement'] !== $pk) {
+            throw new RuntimeException(
+                static::class . '::$' . $pk . ' is not an AUTO_INCREMENT column, so save() cannot tell an insert '
+                . 'from an update. Use insert(), or ' . static::class . '::query() for an update.'
+            );
+        }
+
         $this->onBeforeSave();
 
-        $pk = $this->primaryKey;
         $raw = $this->toArray();
         $isUpdate = !empty($raw[$pk]);
-
-        $colMeta = static::columnMeta();
-        $nullable = $colMeta['nullable'];
-
-        // Drop null values, except an explicit null assigned to a nullable
-        $data = [];
-        foreach ($raw as $col => $value) {
-            if ($value === null) {
-                if ($isUpdate && in_array($col, $nullable, true)) {
-                    $data[$col] = null;
-                }
-                continue;
-            }
-            $data[$col] = $value;
-        }
-
-        foreach ($colMeta['json'] as $col) {
-            if (isset($data[$col]) && is_array($data[$col])) {
-                $data[$col] = json_encode($data[$col], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-            }
-        }
+        $data = $this->writableData($raw, $isUpdate);
 
         $builder = static::newBuilder();
 
@@ -288,6 +293,52 @@ abstract class Model implements ArrayAccess
         $this->onSave();
 
         return $result;
+    }
+
+    /**
+     * Writes every column the model holds without consulting the primary key,
+     * which is the only correct write for a table whose key is supplied rather
+     * than generated. A create-or-update on such a table has to be stated in
+     * SQL, because nothing here can make a read and a write atomic.
+     */
+    public function insert(): QueryResult
+    {
+        $this->onBeforeSave();
+
+        $result = static::newBuilder()->insert($this->writableData($this->toArray(), false));
+
+        $this->onSave();
+
+        return $result;
+    }
+
+    /**
+     * A null is dropped rather than written, so an unset property does not
+     * overwrite a column that has a default. An update keeps a null that
+     * belongs to a nullable column, which is the only way to clear one.
+     */
+    private function writableData(array $raw, bool $keepNulls): array
+    {
+        $colMeta = static::columnMeta();
+
+        $data = [];
+        foreach ($raw as $col => $value) {
+            if ($value === null) {
+                if ($keepNulls && in_array($col, $colMeta['nullable'], true)) {
+                    $data[$col] = null;
+                }
+                continue;
+            }
+            $data[$col] = $value;
+        }
+
+        foreach ($colMeta['json'] as $col) {
+            if (isset($data[$col]) && is_array($data[$col])) {
+                $data[$col] = json_encode($data[$col], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+        }
+
+        return $data;
     }
 
     public function toArray(): array
