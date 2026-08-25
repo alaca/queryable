@@ -705,10 +705,13 @@ Campaign::migrate(true);
 | `$table->id()` | `BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY` |
 | `$table->string('name')` | `VARCHAR(255) NOT NULL` |
 | `$table->string('code', 50)` | `VARCHAR(50) NOT NULL` |
+| `$table->char('field_key', 16)` | `CHAR(16) NOT NULL` |
+| `$table->binary('content_hash', 32)` | `BINARY(32) NOT NULL` |
 | `$table->text('body')` | `TEXT NOT NULL` |
 | `$table->longText('content')` | `LONGTEXT NOT NULL` |
 | `$table->integer('count')` | `INT NOT NULL` |
 | `$table->bigInteger('views')` | `BIGINT NOT NULL` |
+| `$table->smallInteger('row_index')` | `SMALLINT NOT NULL` |
 | `$table->tinyInteger('priority')` | `TINYINT NOT NULL` |
 | `$table->float('rating')` | `FLOAT NOT NULL` |
 | `$table->decimal('price', 8, 2)` | `DECIMAL(8,2) NOT NULL` |
@@ -765,7 +768,42 @@ $table->bigInteger('user_id')->unsigned()->references('users', 'ID')->onDelete('
 $table->string('country', 2)->index();
 ```
 
-Available modifiers: `->nullable()`, `->unique()`, `->primary()`, `->unsigned()`, `->default($value)`, `->references($table, $column)`, `->onDelete($action)`, `->index($name = null)`
+Available modifiers: `->nullable()`, `->unique()`, `->primary()`, `->unsigned()`, `->charset($charset, $collate = null)`, `->default($value)`, `->references($table, $column)`, `->onDelete($action)`, `->index($name = null)`
+
+`->charset()` emits `CHARACTER SET x COLLATE y` between the type and the NULL constraint, which is the only position MySQL accepts. Omit the second argument to take the character set's default collation.
+
+```php
+$table->char('field_key', 16)->charset('ascii', 'ascii_bin');
+$table->string('projection_state', 16)->charset('ascii');
+```
+
+### Table Options
+
+A composite primary key is declared on the table. It replaces every column-level `->primary()`, including the implicit one `id()` sets, because a table may carry only one and dbDelta cannot drop one afterwards. Unknown column names throw `InvalidArgumentException`.
+
+```php
+$table->primary(['entry_id', 'field_key', 'row_index', 'value_index']);
+// PRIMARY KEY (`entry_id`, `field_key`, `row_index`, `value_index`)
+```
+
+`rowFormat()` and `collation()` set the trailing table options. `ROW_FORMAT=DYNAMIC` is what raises the InnoDB index key limit from 767 to 3072 bytes.
+
+```php
+$table->rowFormat('DYNAMIC');
+$table->collation('utf8mb4', 'utf8mb4_unicode_520_ci');
+// ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci ROW_FORMAT=DYNAMIC
+```
+
+A model declares the collation its tables are created with, rather than inheriting `$wpdb`:
+
+```php
+class EntryValue extends Model
+{
+    protected array $collation = ['utf8mb4', 'utf8mb4_unicode_520_ci'];
+}
+```
+
+Leave the property empty to fall back to whatever `$wpdb` reports.
 
 ### Indexes
 
