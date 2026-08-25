@@ -6,6 +6,7 @@
             <directory>tests/Schema</directory>
             <file>tests/TableTest.php</file>
             <file>tests/ModelMakeTest.php</file>
+            <file>tests/ModelCollationTest.php</file>
         </testsuite>
     </testsuites>
 </phpunit>

@@ -16,6 +16,9 @@ abstract class Model implements ArrayAccess
     protected string $primaryKey = 'id';
     protected string $version = '1.0.0';
 
+    /** [charset, collate]. Left empty, the table falls back to whatever $wpdb reports. */
+    protected array $collation = ['utf8mb4', 'utf8mb4_unicode_520_ci'];
+
     private array $extras = [];
     private static array $schemas = [];
 
@@ -319,8 +322,8 @@ abstract class Model implements ArrayAccess
 
         $prefix = $wpdb->prefix ?? '';
         $fullName = $prefix . $model->table;
-        $charset = $wpdb->charset ?? 'utf8mb4';
-        $collate = $wpdb->collate ?? 'utf8mb4_unicode_ci';
+        $charset = $model->collation[0] ?? $wpdb->charset ?? 'utf8mb4';
+        $collate = $model->collation[1] ?? $wpdb->collate ?? 'utf8mb4_unicode_ci';
 
         $meta = $model->meta();
         $tableBuilder = new Table($charset, $collate, $meta);

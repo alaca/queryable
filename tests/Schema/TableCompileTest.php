@@ -108,6 +108,14 @@ final class TableCompileTest extends TestCase
         self::assertStringContainsString('DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci', $sql);
     }
 
+    public function test_model_collation_overrides_wpdb(): void
+    {
+        $t = new Table('utf8mb4', 'utf8mb4_unicode_520_ci');
+        $t->id();
+
+        self::assertStringContainsString('COLLATE=utf8mb4_unicode_520_ci', $t->compile('wp_x'));
+    }
+
     public function test_row_format_is_absent_unless_declared(): void
     {
         $t = new Table();
