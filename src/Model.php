@@ -347,7 +347,21 @@ abstract class Model implements ArrayAccess
 
         dbDelta(implode("\n", $sqls));
 
+        // dbDelta() reports nothing usable when a CREATE is rejected, so recording
+        // the version blind would latch a failed migration as a completed one and
+        // never retry it without force.
+        if (!self::tableExists($fullName)) {
+            return;
+        }
+
         update_option($optionKey, $model->version);
+    }
+
+    private static function tableExists(string $table): bool
+    {
+        global $wpdb;
+
+        return $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table))) === $table;
     }
 
     public static function transaction(callable $callback): mixed

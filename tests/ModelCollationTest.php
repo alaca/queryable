@@ -7,13 +7,7 @@ namespace Queryable\Tests;
 use PHPUnit\Framework\TestCase;
 use Queryable\Model;
 use Queryable\Schema\Table;
-
-class WpdbDouble
-{
-    public string $prefix = 'wp_';
-    public string $charset = 'latin1';
-    public string $collate = 'latin1_swedish_ci';
-}
+use Queryable\Tests\Support\WpdbDouble;
 
 class DefaultCollationModel extends Model
 {
