@@ -148,4 +148,29 @@ final class TableCompileTest extends TestCase
 
         self::assertStringNotContainsString('ROW_FORMAT', $t->compile('wp_x'));
     }
+
+    public function test_tiny_integer_takes_an_optional_display_width(): void
+    {
+        $t = new Table();
+        $t->tinyInteger('is_live', 1)->default(1);
+        $t->tinyInteger('status')->unsigned()->default(1);
+
+        $sql = $t->compile('wp_x');
+
+        self::assertStringContainsString('`is_live` tinyint(1) NOT NULL DEFAULT 1', $sql);
+        self::assertStringContainsString('`status` tinyint(3) unsigned NOT NULL DEFAULT 1', $sql);
+    }
+
+    /**
+     * canonicalType() supplies a default width only when the type carries no
+     * arguments, so an explicit width must survive the unsigned handling that
+     * would otherwise rewrite it.
+     */
+    public function test_an_explicit_tiny_integer_width_survives_unsigned(): void
+    {
+        $t = new Table();
+        $t->tinyInteger('flag', 1)->unsigned();
+
+        self::assertStringContainsString('`flag` tinyint(1) unsigned NOT NULL', $t->compile('wp_x'));
+    }
 }

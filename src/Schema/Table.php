@@ -99,9 +99,14 @@ class Table
         return $col;
     }
 
-    public function tinyInteger(string $name): Column
+    /**
+     * A width is only ever a display hint, never a range, but tinyint(1) is the
+     * one clients read as boolean, so a column that means true or false has to
+     * be able to say so.
+     */
+    public function tinyInteger(string $name, ?int $length = null): Column
     {
-        $col = new Column($name, 'TINYINT');
+        $col = new Column($name, $length === null ? 'TINYINT' : "TINYINT({$length})");
         $this->columns[] = $col;
 
         return $col;
