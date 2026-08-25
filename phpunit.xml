@@ -8,6 +8,7 @@
             <file>tests/ModelMakeTest.php</file>
             <file>tests/ModelCollationTest.php</file>
             <file>tests/ModelSchemaTest.php</file>
+            <file>tests/ModelCompileSchemaTest.php</file>
             <file>tests/ModelMigrateTest.php</file>
             <file>tests/WpFunctionStubTest.php</file>
         </testsuite>

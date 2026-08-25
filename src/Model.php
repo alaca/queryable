@@ -313,6 +313,43 @@ abstract class Model implements ArrayAccess
         return self::$schemas[$class] ?? null;
     }
 
+    /**
+     * The DDL migrate would run, without running it. A golden-DDL test that
+     * compiled through its own path would lock down bytes migration never
+     * executes, so both go through here.
+     */
+    public static function compileSchema(): string
+    {
+        return static::schemaBuilder()->compile(static::qualifiedTable());
+    }
+
+    private static function qualifiedTable(): string
+    {
+        global $wpdb;
+
+        return ($wpdb->prefix ?? '') . (new static())->table;
+    }
+
+    private static function schemaBuilder(): Table
+    {
+        global $wpdb;
+
+        $callback = self::$schemas[static::class] ?? null;
+
+        if (!$callback) {
+            throw new RuntimeException('No schema defined for ' . static::class . '. Call ' . static::class . '::schema() first.');
+        }
+
+        $model = new static();
+        $charset = $model->collation[0] ?? $wpdb->charset ?? 'utf8mb4';
+        $collate = $model->collation[1] ?? $wpdb->collate ?? 'utf8mb4_unicode_ci';
+
+        $builder = new Table($charset, $collate, $model->meta());
+        $callback($builder);
+
+        return $builder;
+    }
+
     public static function migrate(bool $force = false): void
     {
         global $wpdb;
@@ -324,25 +361,15 @@ abstract class Model implements ArrayAccess
             return;
         }
 
-        $callback = static::$schemas[static::class] ?? null;
-
-        if (!$callback) {
-            throw new RuntimeException('No schema defined for ' . static::class . '. Call ' . static::class . '::schema() first.');
-        }
-
         $prefix = $wpdb->prefix ?? '';
-        $fullName = $prefix . $model->table;
-        $charset = $model->collation[0] ?? $wpdb->charset ?? 'utf8mb4';
-        $collate = $model->collation[1] ?? $wpdb->collate ?? 'utf8mb4_unicode_ci';
+        $fullName = static::qualifiedTable();
+
+        $sqls = [static::compileSchema() . ';'];
 
         $meta = $model->meta();
-        $tableBuilder = new Table($charset, $collate, $meta);
-        $callback($tableBuilder);
-
-        $sqls = [$tableBuilder->compile($fullName) . ';'];
 
         if (!empty($meta)) {
-            $sqls[] = $tableBuilder->compileMetaTable($fullName, $prefix) . ';';
+            $sqls[] = static::schemaBuilder()->compileMetaTable($fullName, $prefix) . ';';
         }
 
         dbDelta(implode("\n", $sqls));
