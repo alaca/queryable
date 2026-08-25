@@ -303,6 +303,16 @@ abstract class Model implements ArrayAccess
         static::$schemas[static::class] = $callback;
     }
 
+    /**
+     * Lets a consumer compile a model's DDL without migrating it, which is how a
+     * golden-DDL test locks a schema down. The alternative is reflecting into
+     * this class's privates.
+     */
+    public static function schemaFor(string $class): ?Closure
+    {
+        return self::$schemas[$class] ?? null;
+    }
+
     public static function migrate(bool $force = false): void
     {
         global $wpdb;
