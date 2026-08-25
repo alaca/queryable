@@ -780,7 +780,7 @@ class ModelTest extends \WP_UnitTestCase
         $reloaded = TestModelWithJson::query()->find('id', $model->id);
 
         $this->assertIsArray($reloaded->payload);
-        // MySQL JSON sorts object keys on storage — compare with == (assertEquals)
+        // MySQL JSON sorts object keys on storage, compare with == (assertEquals)
         // so associative-array key order doesn't matter.
         $this->assertEquals(['nested' => ['a' => 1, 'b' => 'two'], 'list' => [10, 20, 30]], $reloaded->payload);
     }
@@ -892,7 +892,7 @@ class ModelTest extends \WP_UnitTestCase
         try {
             DB::transaction(function () {
                 DB::transaction(function () {
-                    // inner work — no DB writes needed; we're testing control flow
+                    // inner work, no DB writes needed; we're testing control flow
                 });
                 // outer work
             });

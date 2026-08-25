@@ -19,7 +19,7 @@ trait HasMeta
 
         $aliases = $metaConfig['aliases'] ?? [];
 
-        // No keys provided — use all defined aliases
+        // No keys provided, use all defined aliases
         if (empty($keys)) {
             $keys = array_keys($aliases);
         }
